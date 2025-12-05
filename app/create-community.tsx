@@ -1,0 +1,316 @@
+import React, { useState } from 'react';
+import { 
+  View, 
+  StyleSheet, 
+  Pressable, 
+  TextInput, 
+  Switch, 
+  Alert, 
+  Platform, 
+  ActivityIndicator 
+} from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useRouter, Stack } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { useTheme } from '@/hooks/use-theme';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
+import { createCommunity } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
+
+export default function CreateCommunityScreen() {
+  const { theme } = useTheme();
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const isValid = name.trim().length >= 3;
+
+  const handleCreate = async () => {
+    if (!user?.id || !isValid) return;
+
+    setIsCreating(true);
+    try {
+      const result = await createCommunity(
+        name.trim(),
+        description.trim() || null,
+        user.id,
+        isPrivate
+      );
+
+      if (result.success && result.community) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        // Go back to previous screen (e.g., communities tab)
+        router.back();
+        // Then navigate to the new community detail
+        setTimeout(() => {
+          router.push(`/community-detail/${result.community.id}`);
+        }, 100);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to create community');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create community');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleCancel = () => {
+    router.back();
+  };
+
+  return (
+    <>
+      {/* Optional: Custom header */}
+      <Stack.Screen
+        options={{
+          headerTitle: 'Create Community',
+          headerRight: () => (
+            <Pressable onPress={handleCancel} style={{ padding: 8 }}>
+              <ThemedText style={{ color: theme.textSecondary }}>Cancel</ThemedText>
+            </Pressable>
+          ),
+        }}
+      />
+      
+      <ScreenKeyboardAwareScrollView>
+        <View style={styles.content}>
+          <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
+            <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
+              <Feather name="users" size={40} color="#FFFFFF" />
+            </View>
+          </View>
+
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <ThemedText type="body" style={{ fontWeight: '600', marginBottom: Spacing.sm }}>
+                Community Name *
+              </ThemedText>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter community name"
+                placeholderTextColor={theme.textSecondary}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundDefault,
+                    color: theme.text,
+                    borderColor: name.length > 0 && name.length < 3 ? Colors.light.error : theme.border,
+                  },
+                ]}
+                maxLength={50}
+                autoFocus
+              />
+              {name.length > 0 && name.length < 3 ? (
+                <ThemedText type="small" style={{ color: Colors.light.error, marginTop: Spacing.xs }}>
+                  Name must be at least 3 characters
+                </ThemedText>
+              ) : null}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText type="body" style={{ fontWeight: '600', marginBottom: Spacing.sm }}>
+                Description
+              </ThemedText>
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="What's this community about? (optional)"
+                placeholderTextColor={theme.textSecondary}
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  {
+                    backgroundColor: theme.backgroundDefault,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                maxLength={200}
+              />
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs, textAlign: 'right' }}>
+                {description.length}/200
+              </ThemedText>
+            </View>
+
+            <View style={[styles.toggleRow, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+              <View style={styles.toggleInfo}>
+                <View style={styles.toggleHeader}>
+                  <Feather name={isPrivate ? 'lock' : 'globe'} size={20} color={theme.primary} />
+                  <ThemedText type="body" style={{ fontWeight: '600', marginLeft: Spacing.sm }}>
+                    {isPrivate ? 'Private Community' : 'Public Community'}
+                  </ThemedText>
+                </View>
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                  {isPrivate 
+                    ? 'Only invited members can join and see content'
+                    : 'Anyone can find and join this community'
+                  }
+                </ThemedText>
+              </View>
+              <Switch
+                value={isPrivate}
+                onValueChange={setIsPrivate}
+                trackColor={{ false: theme.backgroundSecondary, true: theme.primary + '50' }}
+                thumbColor={isPrivate ? theme.primary : '#FFFFFF'}
+              />
+            </View>
+
+            <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="info" size={16} color={theme.textSecondary} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
+                You'll be the owner of this community and can invite other members to join.
+              </ThemedText>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <Pressable
+                onPress={handleCancel}
+                style={({ pressed }) => [
+                  styles.cancelButton,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    opacity: pressed ? 0.9 : 1,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <ThemedText 
+                  type="body" 
+                  style={{ 
+                    color: theme.textSecondary,
+                    fontWeight: '600', 
+                  }}
+                >
+                  Cancel
+                </ThemedText>
+              </Pressable>
+
+              <Pressable
+                onPress={handleCreate}
+                disabled={!isValid || isCreating}
+                style={({ pressed }) => [
+                  styles.createButton,
+                  {
+                    backgroundColor: isValid ? theme.primary : theme.backgroundSecondary,
+                    opacity: (pressed && isValid) ? 0.9 : 1,
+                  },
+                ]}
+              >
+                {isCreating ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Feather name="plus" size={20} color={isValid ? '#FFFFFF' : theme.textSecondary} />
+                    <ThemedText 
+                      type="body" 
+                      style={{ 
+                        color: isValid ? '#FFFFFF' : theme.textSecondary, 
+                        fontWeight: '600', 
+                        marginLeft: Spacing.sm 
+                      }}
+                    >
+                      Create
+                    </ThemedText>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </ScreenKeyboardAwareScrollView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing['3xl'],
+  },
+  iconPreview: {
+    alignItems: 'center',
+    paddingVertical: Spacing['3xl'],
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.xl,
+  },
+  largeIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  form: {
+    gap: Spacing.lg,
+  },
+  inputGroup: {},
+  input: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    fontSize: 16,
+  },
+  textArea: {
+    minHeight: 100,
+    paddingTop: Spacing.md,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  toggleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.lg,
+  },
+  createButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+  },
+  cancelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+});

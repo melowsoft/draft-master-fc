@@ -1,8 +1,21 @@
+// screens/DiscoverScreen.tsx
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, Platform, ActivityIndicator } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  FlatList,
+  RefreshControl,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -13,7 +26,11 @@ import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { Lineup, Challenge } from '@/data/types';
 import { formations } from '@/data/formations';
 import { isSupabaseConfigured } from '@/services/supabase';
-import { fetchPublicLineups, fetchTrendingLineups, fetchActiveChallenges, PublicLineup } from '@/services/communityService';
+import {
+  fetchTrendingLineups,
+  fetchActiveChallenges,
+  PublicLineup,
+} from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
 
 const sampleChallenges: Challenge[] = [
@@ -51,8 +68,8 @@ const sampleChallenges: Challenge[] = [
   },
   {
     id: '5',
-    title: 'Ballon d\'Or Dream Team',
-    description: 'Build a squad featuring Ballon d\'Or winners and nominees',
+    title: "Ballon d'Or Dream Team",
+    description: 'Build a squad featuring Ballon dOr winners and nominees',
     theme: 'awards',
     endDate: '2026-01-05',
     participants: 921,
@@ -94,13 +111,13 @@ const sampleTrendingLineups: Lineup[] = [
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-function QuickActionCard({ 
-  icon, 
-  title, 
-  description, 
-  color, 
-  onPress 
-}: { 
+function QuickActionCard({
+  icon,
+  title,
+  description,
+  color,
+  onPress,
+}: {
   icon: keyof typeof Feather.glyphMap;
   title: string;
   description: string;
@@ -122,8 +139,12 @@ function QuickActionCard({
         }
         onPress();
       }}
-      onPressIn={() => { scale.value = withSpring(0.97); }}
-      onPressOut={() => { scale.value = withSpring(1); }}
+      onPressIn={() => {
+        scale.value = withSpring(0.97);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1);
+      }}
       style={[
         styles.quickActionCard,
         { backgroundColor: color + '15', borderColor: color + '40' },
@@ -133,20 +154,37 @@ function QuickActionCard({
       <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
         <Feather name={icon} size={20} color="#FFFFFF" />
       </View>
-      <ThemedText type="body" style={{ fontWeight: '600' }}>{title}</ThemedText>
-      <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 2 }}>
+      <ThemedText type="body" style={{ fontWeight: '600' }}>
+        {title}
+      </ThemedText>
+      <ThemedText
+        type="small"
+        style={{ color: theme.textSecondary, marginTop: 2 }}
+      >
         {description}
       </ThemedText>
     </AnimatedPressable>
   );
 }
 
-function ChallengeCard({ challenge, onPress }: { challenge: Challenge; onPress: () => void }) {
+function ChallengeCard({
+  challenge,
+  onPress,
+}: {
+  challenge: Challenge;
+  onPress: () => void;
+}) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
-  
-  const daysLeft = Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-  
+
+  const daysLeft = Math.max(
+    0,
+    Math.ceil(
+      (new Date(challenge.endDate).getTime() - Date.now()) /
+        (1000 * 60 * 60 * 24)
+    )
+  );
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -159,44 +197,80 @@ function ChallengeCard({ challenge, onPress }: { challenge: Challenge; onPress: 
         }
         onPress();
       }}
-      onPressIn={() => { scale.value = withSpring(0.98); }}
-      onPressOut={() => { scale.value = withSpring(1); }}
+      onPressIn={() => {
+        scale.value = withSpring(0.98);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1);
+      }}
       style={[
         styles.challengeCard,
-        { backgroundColor: isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen },
+        {
+          backgroundColor: isDark
+            ? Colors.dark.pitchGreen
+            : Colors.light.pitchGreen,
+        },
         animatedStyle,
       ]}
     >
       <View style={styles.challengeContent}>
-        <ThemedText type="h4" style={styles.challengeTitle} lightColor="#FFFFFF" darkColor="#FFFFFF">
+        <ThemedText
+          type="h4"
+          style={styles.challengeTitle}
+          lightColor="#FFFFFF"
+          darkColor="#FFFFFF"
+        >
           {challenge.title}
         </ThemedText>
-        <ThemedText type="small" style={styles.challengeDesc} lightColor="rgba(255,255,255,0.85)" darkColor="rgba(255,255,255,0.85)">
+        <ThemedText
+          type="small"
+          style={styles.challengeDesc}
+          lightColor="rgba(255,255,255,0.85)"
+          darkColor="rgba(255,255,255,0.85)"
+        >
           {challenge.description}
         </ThemedText>
         <View style={styles.challengeMeta}>
           <View style={styles.metaItem}>
             <Feather name="users" size={14} color="rgba(255,255,255,0.7)" />
-            <ThemedText type="small" lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={styles.metaText}>
+            <ThemedText
+              type="small"
+              lightColor="rgba(255,255,255,0.7)"
+              darkColor="rgba(255,255,255,0.7)"
+              style={styles.metaText}
+            >
               {challenge.participants.toLocaleString()}
             </ThemedText>
           </View>
           <View style={styles.metaItem}>
             <Feather name="clock" size={14} color="rgba(255,255,255,0.7)" />
-            <ThemedText type="small" lightColor="rgba(255,255,255,0.7)" darkColor="rgba(255,255,255,0.7)" style={styles.metaText}>
+            <ThemedText
+              type="small"
+              lightColor="rgba(255,255,255,0.7)"
+              darkColor="rgba(255,255,255,0.7)"
+              style={styles.metaText}
+            >
               {daysLeft} days left
             </ThemedText>
           </View>
         </View>
       </View>
-      <View style={[styles.challengeBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+      <View
+        style={[styles.challengeBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+      >
         <Feather name="award" size={24} color="#FFD700" />
       </View>
     </AnimatedPressable>
   );
 }
 
-function TrendingLineupCard({ lineup, onPress }: { lineup: Lineup; onPress: () => void }) {
+function TrendingLineupCard({
+  lineup,
+  onPress,
+}: {
+  lineup: Lineup;
+  onPress: () => void;
+}) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
 
@@ -207,18 +281,20 @@ function TrendingLineupCard({ lineup, onPress }: { lineup: Lineup; onPress: () =
   return (
     <AnimatedPressable
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.97); }}
-      onPressOut={() => { scale.value = withSpring(1); }}
-      style={[
-        styles.trendingCard,
-        { backgroundColor: theme.backgroundDefault },
-        animatedStyle,
-      ]}
+      onPressIn={() => {
+        scale.value = withSpring(0.97);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1);
+      }}
+      style={[styles.trendingCard, { backgroundColor: theme.backgroundDefault }, animatedStyle]}
     >
       <View style={[styles.miniPitch, { backgroundColor: Colors.light.pitchGreen }]}>
         <View style={styles.miniPitchLines}>
           <View style={[styles.centerCircle, { borderColor: 'rgba(255,255,255,0.3)' }]} />
-          <View style={[styles.centerLine, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+          <View
+            style={[styles.centerLine, { backgroundColor: 'rgba(255,255,255,0.3)' }]}
+          />
         </View>
         {lineup.formation.positions.slice(0, 5).map((pos) => (
           <View
@@ -254,22 +330,28 @@ function TrendingLineupCard({ lineup, onPress }: { lineup: Lineup; onPress: () =
 
 function ComingSoonBanner({ isConnected }: { isConnected: boolean }) {
   const { theme } = useTheme();
-  
+
   if (isConnected) {
     return (
       <View style={[styles.comingSoonBanner, { backgroundColor: theme.primary + '15' }]}>
         <Feather name="check-circle" size={16} color={theme.primary} />
-        <ThemedText type="small" style={{ color: theme.primary, marginLeft: Spacing.sm, flex: 1 }}>
+        <ThemedText
+          type="small"
+          style={{ color: theme.primary, marginLeft: Spacing.sm, flex: 1 }}
+        >
           Connected to community! Vote for your favorite lineups and join challenges.
         </ThemedText>
       </View>
     );
   }
-  
+
   return (
     <View style={[styles.comingSoonBanner, { backgroundColor: theme.backgroundSecondary }]}>
       <Feather name="info" size={16} color={theme.textSecondary} />
-      <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
+      <ThemedText
+        type="small"
+        style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}
+      >
         Set up Supabase to enable community features like voting and leaderboards.
       </ThemedText>
     </View>
@@ -279,7 +361,7 @@ function ComingSoonBanner({ isConnected }: { isConnected: boolean }) {
 export default function DiscoverScreen() {
   const { theme, isDark } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const router = useRouter(); // Changed from useNavigation
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -325,22 +407,24 @@ export default function DiscoverScreen() {
   }, [isConnected]);
 
   const handleLineupPress = (lineup: Lineup) => {
-    // Changed from navigation.navigate to router.push
-    router.push(`/lineup-detail/${lineup.id}?isOwner=false`);
+    // Use Expo Router navigation
+    router.push(`/lineup/${lineup.id}`);
+    // Note: You might need to pass additional data via query params or context
   };
 
   const handleComparePress = () => {
-    // Changed from rootNavigation.navigate to router.push
-    router.push('/player-comparison');
+    router.push('/player/comparison');
   };
 
   const handleChallengePress = (challenge: Challenge) => {
-    // Changed from rootNavigation.navigate to router.push
-    router.push('/create-lineup');
+    router.push('/lineup/create');
   };
 
   const featuredChallenge = challenges[0] || sampleChallenges[0];
-  const remainingChallenges = (challenges.length > 1 ? challenges.slice(1) : sampleChallenges.slice(1)).slice(0, 4);
+  const remainingChallenges = (challenges.length > 1
+    ? challenges.slice(1)
+    : sampleChallenges.slice(1)
+  ).slice(0, 4);
   const displayLineups = trendingLineups.length > 0 ? trendingLineups : sampleTrendingLineups;
 
   const renderHeader = () => (
@@ -358,32 +442,32 @@ export default function DiscoverScreen() {
           title="Create"
           description="Build new lineup"
           color={Colors.light.pitchGreen}
-          onPress={() => router.push('/create-lineup')}
+          onPress={() => router.push('/lineup/create')}
         />
       </View>
 
       <View style={styles.sectionHeader}>
         <ThemedText type="h3">Featured Challenge</ThemedText>
       </View>
-      
-      <ChallengeCard 
-        challenge={featuredChallenge} 
+
+      <ChallengeCard
+        challenge={featuredChallenge}
         onPress={() => handleChallengePress(featuredChallenge)}
       />
-      
+
       <View style={[styles.sectionHeader, { marginTop: Spacing.xl }]}>
         <ThemedText type="h3">Trending Lineups</ThemedText>
         {loading ? <ActivityIndicator size="small" color={theme.primary} /> : null}
       </View>
-      
+
       {displayLineups.length > 0 ? (
         <FlatList
           horizontal
           data={displayLineups}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TrendingLineupCard 
-              lineup={item as Lineup} 
+            <TrendingLineupCard
+              lineup={item as Lineup}
               onPress={() => handleLineupPress(item as Lineup)}
             />
           )}
@@ -399,9 +483,9 @@ export default function DiscoverScreen() {
           </ThemedText>
         </View>
       )}
-      
+
       <ComingSoonBanner isConnected={isConnected} />
-      
+
       <View style={[styles.sectionHeader, { marginTop: Spacing.xl }]}>
         <ThemedText type="h3">Active Challenges</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>

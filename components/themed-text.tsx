@@ -1,11 +1,14 @@
+// components/ThemedText.tsx
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { Typography } from '@/constants/theme';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link' | 
+         'h1' | 'h2' | 'h3' | 'h4' | 'body' | 'small' | 'playerNumber' | 'playerRating';
 };
 
 export function ThemedText({
@@ -17,15 +20,52 @@ export function ThemedText({
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
 
+  // Map type to appropriate style
+  let typeStyle;
+  
+  // Handle Replit project types
+  if (type === 'h1') {
+    typeStyle = Typography.h1;
+  } else if (type === 'h2') {
+    typeStyle = Typography.h2;
+  } else if (type === 'h3') {
+    typeStyle = Typography.h3;
+  } else if (type === 'h4') {
+    typeStyle = Typography.h4;
+  } else if (type === 'body') {
+    typeStyle = Typography.body;
+  } else if (type === 'small') {
+    typeStyle = Typography.small;
+  } else if (type === 'link') {
+    typeStyle = Typography.link;
+  } else if (type === 'playerNumber') {
+    typeStyle = Typography.playerNumber || { fontSize: 28, fontWeight: '800' as const };
+  } else if (type === 'playerRating') {
+    typeStyle = Typography.playerRating || { fontSize: 20, fontWeight: '700' as const };
+  }
+  // Handle original template types
+  else if (type === 'default') {
+    typeStyle = styles.default;
+  } else if (type === 'title') {
+    typeStyle = styles.title;
+  } else if (type === 'defaultSemiBold') {
+    typeStyle = styles.defaultSemiBold;
+  } else if (type === 'subtitle') {
+    typeStyle = styles.subtitle;
+  } else {
+    typeStyle = styles.default;
+  }
+
   return (
     <Text
       style={[
         { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        typeStyle,
+        // Special handling for link type
+        (type === 'link' || type === 'link') ? { 
+          textDecorationLine: 'underline',
+          color: useThemeColor({ light: lightColor, dark: darkColor }, 'link')
+        } : undefined,
         style,
       ]}
       {...rest}
@@ -33,10 +73,12 @@ export function ThemedText({
   );
 }
 
+// Original template styles (for backward compatibility)
 const styles = StyleSheet.create({
   default: {
     fontSize: 16,
     lineHeight: 24,
+    fontWeight: '400',
   },
   defaultSemiBold: {
     fontSize: 16,
@@ -51,10 +93,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    lineHeight: 24,
   },
   link: {
-    lineHeight: 30,
     fontSize: 16,
-    color: '#0a7ea4',
+    lineHeight: 24,
+    fontWeight: '400',
   },
 });
