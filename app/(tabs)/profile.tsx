@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  Alert, 
-  Platform, 
-  Modal, 
-  TextInput, 
-  ScrollView,
-  StatusBar 
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TextInput,
+  View
+} from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { loadLineups, loadUser, saveUser, clearAllData, UserData } from '@/data/storage';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { clearAllData, loadLineups, loadUser, saveUser, UserData } from '@/data/storage';
 import { Lineup } from '@/data/types';
-import { useAuth } from '@/services/authContext';
 import { useScreenInsets } from '@/hooks/use-screen-insets'; // Add this import
+import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/services/authContext';
+import { useRouter } from 'expo-router';
 
 // Note: You can create custom avatar components or use initials
 const AVATAR_COLORS = ['#1B5E20', '#0D47A1', '#4A148C', '#B71C1C', '#E65100'];
@@ -106,6 +107,7 @@ export default function ProfileScreen() {
   const { theme, isDark } = useTheme();
   const { signOut, profile, updateProfile } = useAuth();
   const { paddingTop } = useScreenInsets(); // Get safe area insets
+  const router = useRouter();
   
   const [user, setUser] = useState<UserData | null>(null);
   const [lineups, setLineups] = useState<Lineup[]>([]);
@@ -314,6 +316,10 @@ export default function ProfileScreen() {
       );
     }
   };
+  
+  const handleUpgrade = () => {
+    router.push('/subscription');
+  };
 
   const totalVotes = lineups.reduce((sum, l) => sum + (l.votes || 0), 0);
   const displayName = profile?.username || user?.name || 'Football Fan';
@@ -409,6 +415,11 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>App</ThemedText>
+          <SettingsItem 
+            icon="crown" 
+            label="Upgrade to Pro" 
+            onPress={handleUpgrade}
+          />
           <SettingsItem icon="info" label="About DraftMaster FC" />
           <SettingsItem icon="file-text" label="Terms of Service" />
           <SettingsItem icon="shield" label="Privacy Policy" />

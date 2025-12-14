@@ -363,7 +363,7 @@ export default function CommunitiesScreen() {
           <View style={[styles.emptySection, { backgroundColor: theme.backgroundSecondary }]}>
             <Feather name="users" size={24} color={theme.textSecondary} />
             <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
-              You haven't joined any communities yet.{'\n'}Create one or join from the list below!
+              You haven&apos;t joined any communities yet.{'\n'}Create one or join from the list below!
             </ThemedText>
           </View>
         )}

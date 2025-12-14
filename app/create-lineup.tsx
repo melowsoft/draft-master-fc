@@ -1,44 +1,43 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  ScrollView, 
-  TextInput,
-  Alert,
-  Dimensions,
-  Platform,
-  Keyboard,
-  LayoutRectangle,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
-  FadeIn,
-  runOnJS,
-} from 'react-native-reanimated';
-import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
-import ViewShot from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
-import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
-import * as Linking from 'expo-linking';
 import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as Linking from 'expo-linking';
+import * as MediaLibrary from 'expo-media-library';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    Keyboard,
+    LayoutRectangle,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View,
+} from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+    FadeIn,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ViewShot from 'react-native-view-shot';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors, Typography } from '@/constants/theme';
-import { Formation, FormationPosition, Player, Position } from '@/data/types';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import { searchFC25Players } from '@/data/fc25Players';
 import { formations, getDefaultFormation } from '@/data/formations';
-import { fc25Players, searchFC25Players, FC25Player } from '@/data/fc25Players';
-import { addLineup, updateLineup, generateId, loadCustomFormations, loadCustomPlayers, addCustomPlayer } from '@/data/storage';
+import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, updateLineup } from '@/data/storage';
+import { Formation, FormationPosition, Player, Position } from '@/data/types';
+import { useTheme } from '@/hooks/use-theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PITCH_HEIGHT = 420;
@@ -821,7 +820,7 @@ export default function CreateLineupScreen() {
     // Include custom players in the list
     const customResults = customPlayers.filter(p => {
       const matchesQuery = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPosition = !position || p.position === position || p.positions?.includes(position);
+      const matchesPosition = !position ? true : (p.position === position || p.positions?.includes(position as Position));
       const matchesLeague = !league || p.league === league || p.league === 'Other';
       return matchesQuery && matchesPosition && matchesLeague;
     });
@@ -1131,7 +1130,7 @@ export default function CreateLineupScreen() {
               <View style={styles.emptyResults}>
                 <Feather name="search" size={32} color={theme.textSecondary} />
                 <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: 'center' }}>
-                  No players found matching "{searchQuery}"
+                  No players found matching &quot;{searchQuery}&quot;
                 </ThemedText>
                 <Pressable onPress={clearFilters} style={{ marginTop: Spacing.md }}>
                   <ThemedText type="small" style={{ color: theme.primary }}>Clear Filters</ThemedText>

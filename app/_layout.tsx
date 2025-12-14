@@ -36,7 +36,7 @@ function RootLayoutNav() {
   if (!isAuthenticated) {
     return (
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="auth" />
+        <Stack.Screen name="(auth)" />
       </Stack>
     );
   }

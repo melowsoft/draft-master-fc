@@ -67,7 +67,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          DraftMaster FC hit an unexpected tackle. Let's get back on the pitch!
+          DraftMaster FC hit an unexpected tackle. Let&apos;s get back on the pitch!
         </ThemedText>
 
         <Pressable

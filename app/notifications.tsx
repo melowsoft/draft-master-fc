@@ -218,7 +218,7 @@ export default function NotificationsScreen() {
                 No notifications
               </ThemedText>
               <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
-                When someone mentions you in a conversation, you'll see it here
+                When someone mentions you in a conversation, you&apos;ll see it here
               </ThemedText>
             </View>
           }

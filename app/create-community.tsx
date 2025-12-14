@@ -176,7 +176,7 @@ export default function CreateCommunityScreen() {
             <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary }]}>
               <Feather name="info" size={16} color={theme.textSecondary} />
               <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                You'll be the owner of this community and can invite other members to join.
+                You&apos;ll be the owner of this community and can invite other members to join.
               </ThemedText>
             </View>
 

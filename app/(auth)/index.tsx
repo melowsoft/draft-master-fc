@@ -1,24 +1,24 @@
+import { Feather, FontAwesome, FontAwesome5 } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
-  Pressable,
-  ActivityIndicator,
-  Platform,
-  ScrollView,
-  Linking,
+  View,
 } from 'react-native';
-import { Feather, FontAwesome5, FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser';
 
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/Button';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { BorderRadius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { Colors, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { router } from 'expo-router';
 
 type AuthMode = 'login' | 'signup' | 'forgot';
@@ -97,8 +97,8 @@ export default function AuthScreen() {
         if (result.error) {
           setMessage(result.error);
         }
-        console.log('✅ Signup successful, navigating to tabs...');
-        router.replace('/(tabs)');
+        console.log('✅ Signup successful, navigating to subscription...');
+        router.replace('/subscription?redirect=/(tabs)');
       } else {
         setError(result.error || 'Failed to create account');
       }
@@ -115,6 +115,8 @@ export default function AuthScreen() {
 
     if (!result.success) {
       setError(result.error || 'Failed to continue as guest');
+    } else {
+      router.replace('/(tabs)');
     }
   };
 
@@ -184,16 +186,16 @@ export default function AuthScreen() {
 
           {/* Error/Success Messages */}
           {error ? (
-            <View style={[styles.alertBox, { backgroundColor: Colors.error + '15' }]}>
-              <Feather name="alert-circle" size={18} color={Colors.error} />
-              <ThemedText style={[styles.alertText, { color: Colors.error }]}>{error}</ThemedText>
+            <View style={[styles.alertBox, { backgroundColor: theme.error + '15' }]}>
+              <Feather name="alert-circle" size={18} color={theme.error} />
+              <ThemedText style={[styles.alertText, { color: theme.error }]}>{error}</ThemedText>
             </View>
           ) : null}
 
           {message ? (
-            <View style={[styles.alertBox, { backgroundColor: Colors.success + '15' }]}>
-              <Feather name="check-circle" size={18} color={Colors.success} />
-              <ThemedText style={[styles.alertText, { color: Colors.success }]}>{message}</ThemedText>
+            <View style={[styles.alertBox, { backgroundColor: theme.success + '15' }]}>
+              <Feather name="check-circle" size={18} color={theme.success} />
+              <ThemedText style={[styles.alertText, { color: theme.success }]}>{message}</ThemedText>
             </View>
           ) : null}
 
@@ -270,7 +272,6 @@ export default function AuthScreen() {
             onPress={handleEmailAuth}
             disabled={isLoading}
             style={styles.mainButton}
-            variant="primary"
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
@@ -308,7 +309,7 @@ export default function AuthScreen() {
               </Pressable>
             ) : mode === 'login' ? (
               <View style={styles.switchRow}>
-                <ThemedText style={{ color: theme.textSecondary }}>Don't have an account? </ThemedText>
+                <ThemedText style={{ color: theme.textSecondary }}>Don&apos;t have an account? </ThemedText>
                 <Pressable onPress={() => setMode('signup')} hitSlop={8}>
                   <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>Sign Up</ThemedText>
                 </Pressable>
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
-    ...Shadows.md,
+    ...Shadows.card,
   },
   appName: {
     textAlign: 'center',
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     marginBottom: Spacing.xl,
     borderWidth: 1,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
   title: {
     textAlign: 'center',

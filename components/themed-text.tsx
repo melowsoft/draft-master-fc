@@ -1,8 +1,8 @@
 // components/ThemedText.tsx
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { Typography } from '@/constants/theme';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -18,7 +18,8 @@ export function ThemedText({
   type = 'default',
   ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text') as string;
+  const linkColor = useThemeColor({ light: lightColor, dark: darkColor }, 'link') as string;
 
   // Map type to appropriate style
   let typeStyle;
@@ -62,9 +63,9 @@ export function ThemedText({
         { color },
         typeStyle,
         // Special handling for link type
-        (type === 'link' || type === 'link') ? { 
+        type === 'link' ? { 
           textDecorationLine: 'underline',
-          color: useThemeColor({ light: lightColor, dark: darkColor }, 'link')
+          color: linkColor
         } : undefined,
         style,
       ]}
