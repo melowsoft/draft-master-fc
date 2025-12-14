@@ -11,18 +11,21 @@ import {
   ActivityIndicator, 
   Alert, 
   Text, 
-  Dimensions 
+  Dimensions,
+  Animated,
+  Easing
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/use-theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
+import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
 import { 
   Topic, 
   TopicMessage, 
@@ -41,6 +44,7 @@ import { useAuth } from '@/services/authContext';
 type UserProfile = { id: string; username: string };
 
 const AVATAR_COLORS = ['#E53935', '#1E88E5', '#FFB300', '#43A047', '#7B1FA2'];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface MentionSuggestion {
   userId: string;
@@ -48,6 +52,7 @@ interface MentionSuggestion {
   avatarColor: number;
 }
 
+// New improved HighlightedText with better styling
 function HighlightedText({ 
   text, 
   isOwn,
@@ -61,7 +66,11 @@ function HighlightedText({
   const parts = text.split(/(@\w+)/g);
   
   return (
-    <Text style={{ color: isOwn ? '#FFFFFF' : theme.text }}>
+    <Text style={{ 
+      color: isOwn ? '#FFFFFF' : theme.text,
+      fontSize: 15,
+      lineHeight: 20,
+    }}>
       {parts.map((part, index) => {
         if (part.startsWith('@')) {
           return (
@@ -69,7 +78,10 @@ function HighlightedText({
               key={index} 
               style={{ 
                 color: isOwn ? '#FFD700' : highlightColor,
-                fontWeight: '600',
+                fontWeight: '700',
+                backgroundColor: isOwn ? 'rgba(255, 215, 0, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                paddingHorizontal: 4,
+                borderRadius: 4,
               }}
             >
               {part}
@@ -82,6 +94,7 @@ function HighlightedText({
   );
 }
 
+// Improved time formatter
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -91,223 +104,213 @@ function formatTime(dateString: string): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const LINEUP_IMAGE_WIDTH = Dimensions.get('window').width * 0.55;
-const LINEUP_IMAGE_ASPECT_RATIO = 420 / (Dimensions.get('window').width - 32);
-
-function LineupPreviewCard({ 
-  lineup, 
-  isOwn 
-}: { 
-  lineup: { id: string; name: string; formationId: string; formationName: string; playerCount: number; imageUrl?: string }; 
-  isOwn: boolean;
-}) {
-  const { theme } = useTheme();
-  const [imageError, setImageError] = useState(false);
-
-  const renderCardContent = () => (
-    <View style={styles.lineupPreviewHeader}>
-      <View style={[styles.lineupPreviewIcon, { backgroundColor: isOwn ? '#FFD700' : theme.primary }]}>
-        <Feather name="layout" size={14} color={isOwn ? '#1B5E20' : '#FFF'} />
-      </View>
-      <View style={styles.lineupPreviewInfo}>
-        <ThemedText 
-          type="small" 
-          style={{ 
-            fontWeight: '600', 
-            color: isOwn ? '#FFFFFF' : theme.text,
-          }}
-          numberOfLines={1}
-        >
-          {lineup.name}
-        </ThemedText>
-        <ThemedText 
-          type="small" 
-          style={{ 
-            fontSize: 11,
-            color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary,
-          }}
-        >
-          {lineup.formationName} - {lineup.playerCount} players
-        </ThemedText>
-      </View>
-    </View>
-  );
-
-  if (lineup.imageUrl && !imageError) {
-    return (
-      <View style={[
-        styles.lineupImageCard,
-        { 
-          backgroundColor: isOwn ? 'rgba(255,255,255,0.1)' : theme.backgroundSecondary,
-          borderColor: isOwn ? 'rgba(255,255,255,0.2)' : theme.border,
-        }
-      ]}>
-        <Image
-          source={{ uri: lineup.imageUrl }}
-          style={styles.lineupImage}
-          contentFit="cover"
-          transition={200}
-          onError={() => setImageError(true)}
-        />
-        <View style={styles.lineupImageOverlay}>
-          <ThemedText 
-            type="small" 
-            style={{ 
-              fontWeight: '600', 
-              color: '#FFFFFF',
-              textShadowColor: 'rgba(0,0,0,0.5)',
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 2,
-            }}
-            numberOfLines={1}
-          >
-            {lineup.name}
-          </ThemedText>
-          <ThemedText 
-            type="small" 
-            style={{ 
-              fontSize: 11,
-              color: 'rgba(255,255,255,0.9)',
-              textShadowColor: 'rgba(0,0,0,0.5)',
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 2,
-            }}
-          >
-            {lineup.formationName} - {lineup.playerCount} players
-          </ThemedText>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[
-      styles.lineupPreviewCard,
-      { 
-        backgroundColor: isOwn ? 'rgba(255,255,255,0.15)' : theme.backgroundSecondary,
-        borderColor: isOwn ? 'rgba(255,255,255,0.2)' : theme.border,
-      }
-    ]}>
-      {renderCardContent()}
-    </View>
-  );
-}
-
+// Improved MessageBubble with better visuals
 function MessageBubble({ 
   message, 
   isOwn,
-  onDelete
+  onDelete,
+  showAvatar = true
 }: { 
   message: TopicMessage; 
   isOwn: boolean;
   onDelete?: () => void;
+  showAvatar?: boolean;
 }) {
   const { theme } = useTheme();
   const avatarColor = AVATAR_COLORS[message.authorAvatarColor % AVATAR_COLORS.length];
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handleLongPress = () => {
     if (isOwn && onDelete) {
+      // Add haptic feedback
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      
       Alert.alert(
         'Delete Message',
         'Are you sure you want to delete this message?',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: onDelete },
+          { 
+            text: 'Delete', 
+            style: 'destructive', 
+            onPress: () => {
+              if (Platform.OS !== 'web') {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              }
+              onDelete();
+            }
+          },
         ]
       );
     }
   };
 
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <View style={[styles.messageRow, { justifyContent: isOwn ? 'flex-end' : 'flex-start' }]}>
-      {!isOwn && (
+    <Animated.View 
+      style={[
+        styles.messageRow, 
+        { 
+          justifyContent: isOwn ? 'flex-end' : 'flex-start',
+          transform: [{ scale: scaleAnim }],
+        }
+      ]}
+    >
+      {!isOwn && showAvatar && (
         <View style={[styles.messageAvatar, { backgroundColor: avatarColor }]}>
-          <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+          <Text style={styles.avatarText}>
             {message.authorUsername.charAt(0).toUpperCase()}
-          </ThemedText>
+          </Text>
         </View>
       )}
       
       <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         onLongPress={handleLongPress}
-        style={[
+        delayLongPress={300}
+        style={({ pressed }) => [
           styles.messageBubble,
           {
             backgroundColor: isOwn ? theme.primary : theme.backgroundDefault,
-            maxWidth: '70%',
+            maxWidth: SCREEN_WIDTH * 0.75,
+            borderBottomLeftRadius: isOwn ? BorderRadius.lg : BorderRadius.xs,
+            borderBottomRightRadius: isOwn ? BorderRadius.xs : BorderRadius.lg,
+            ...Shadows.sm,
           },
         ]}
       >
-        {!isOwn && (
-          <ThemedText type="small" style={{ fontWeight: '600', color: theme.primary, marginBottom: Spacing.xs }}>
-            @{message.authorUsername}
-          </ThemedText>
+        {!isOwn && showAvatar && (
+          <View style={styles.messageHeader}>
+            <Text style={[styles.authorName, { color: theme.primary }]}>
+              @{message.authorUsername}
+            </Text>
+          </View>
         )}
         
-        <View style={{ marginBottom: Spacing.xs }}>
-          <HighlightedText 
-            text={message.body} 
-            isOwn={isOwn}
-            highlightColor={theme.primary}
-          />
-        </View>
-        
-        {message.lineup ? (
-          <LineupPreviewCard lineup={message.lineup} isOwn={isOwn} />
-        ) : null}
+        <View style={styles.messageContent}>
+          {message.body ? (
+            <HighlightedText 
+              text={message.body} 
+              isOwn={isOwn}
+              highlightColor={theme.primary}
+            />
+          ) : null}
 
-        {message.imageUrl ? (
-          <Image
-            source={{ uri: message.imageUrl }}
-            style={[
-              styles.messageImage,
-              {
-                marginTop: Spacing.sm,
-                marginBottom: Spacing.xs,
-              }
-            ]}
-            contentFit="cover"
-          />
-        ) : null}
-        
-        <ThemedText 
-          type="small" 
-          style={{ 
-            color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary,
-            textAlign: 'right',
-          }}
-        >
-          {formatTime(message.createdAt)}
-        </ThemedText>
+          {message.imageUrl ? (
+            <View style={styles.imageContainer}>
+              <Image
+                source={{ uri: message.imageUrl }}
+                style={styles.messageImage}
+                contentFit="cover"
+                transition={300}
+              />
+              <View style={styles.imageOverlay}>
+                <Feather name="image" size={16} color="rgba(255,255,255,0.9)" />
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.messageFooter}>
+          <Text style={[
+            styles.timeText,
+            { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary }
+          ]}>
+            {formatTime(message.createdAt)}
+          </Text>
+          {isOwn && (
+            <Feather 
+              name="check" 
+              size={12} 
+              color={isOwn ? 'rgba(255,255,255,0.7)' : theme.textSecondary} 
+              style={{ marginLeft: 4 }}
+            />
+          )}
+        </View>
       </Pressable>
 
-      {isOwn && (
-        <View style={[styles.messageAvatar, { backgroundColor: theme.primary, marginLeft: Spacing.sm }]}>
-          <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+      {isOwn && showAvatar && (
+        <View style={[styles.messageAvatar, { backgroundColor: theme.primary }]}>
+          <Text style={styles.avatarText}>
             {message.authorUsername.charAt(0).toUpperCase()}
-          </ThemedText>
+          </Text>
         </View>
       )}
-    </View>
+    </Animated.View>
+  );
+}
+
+// Floating Action Button for new messages
+function ScrollToBottomButton({ onPress, unreadCount }: { onPress: () => void; unreadCount: number }) {
+  const { theme } = useTheme();
+  const [isVisible, setIsVisible] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: isVisible ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isVisible, fadeAnim]);
+
+  return (
+    <Animated.View style={[styles.scrollToBottomButton, { opacity: fadeAnim }]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.fab,
+          {
+            backgroundColor: theme.primary,
+            transform: [{ scale: pressed ? 0.95 : 1 }],
+          },
+        ]}
+      >
+        <Feather name="chevron-down" size={20} color="#FFFFFF" />
+        {unreadCount > 0 && (
+          <View style={styles.fabBadge}>
+            <Text style={styles.fabBadgeText}>
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
 export default function TopicDetailScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, profile } = useAuth();
   
-  // Get topicId from route params
   const topicId = params.id as string;
   const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
 
   const [topic, setTopic] = useState<Topic | null>(null);
   const [messages, setMessages] = useState<TopicMessage[]>([]);
@@ -320,6 +323,8 @@ export default function TopicDetailScreen() {
   const [communityName, setCommunityName] = useState('');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadData = useCallback(async () => {
     const [topicData, messagesData] = await Promise.all([
@@ -338,7 +343,6 @@ export default function TopicDetailScreen() {
     setLoading(false);
   }, [topicId]);
 
-  // Use useEffect for initial load
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -378,6 +382,7 @@ export default function TopicDetailScreen() {
     if (lastAtIndex >= 0) {
       const newText = newMessage.slice(0, lastAtIndex) + '@' + username + ' ';
       setNewMessage(newText);
+      inputRef.current?.focus();
     }
     setShowMentions(false);
     setMentionSuggestions([]);
@@ -391,7 +396,10 @@ export default function TopicDetailScreen() {
     let imageUrl: string | undefined = undefined;
 
     if (selectedImageUri) {
+      setUploadingImage(true);
       const uploadResult = await uploadChatImage(selectedImageUri, user.id);
+      setUploadingImage(false);
+      
       if (!uploadResult.success) {
         Alert.alert('Error', uploadResult.error || 'Failed to upload image');
         setSending(false);
@@ -422,6 +430,8 @@ export default function TopicDetailScreen() {
       setSelectedImageUri(null);
       setShowMentions(false);
       await loadData();
+      
+      // Scroll to bottom with smooth animation
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -439,13 +449,33 @@ export default function TopicDetailScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
+      allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
       setSelectedImageUri(result.assets[0].uri);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Camera permission is needed to take photos');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setSelectedImageUri(result.assets[0].uri);
+      inputRef.current?.focus();
     }
   };
 
@@ -458,11 +488,29 @@ export default function TopicDetailScreen() {
     }
   };
 
-  // Customize header based on topic
+  const handleScrollToBottom = () => {
+    flatListRef.current?.scrollToEnd({ animated: true });
+    setShowScrollButton(false);
+    setUnreadCount(0);
+  };
+
+  const handleScroll = (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const isNearBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 100;
+    setShowScrollButton(!isNearBottom);
+    
+    // Count unread messages when scrolling up
+    if (!isNearBottom && messages.length > 0) {
+      const lastVisibleIndex = Math.floor((contentOffset.y + layoutMeasurement.height) / 100);
+      const newUnread = Math.max(0, messages.length - lastVisibleIndex - 3);
+      setUnreadCount(newUnread);
+    }
+  };
+
+  // Custom header with community info
   useEffect(() => {
-    if (topic?.title) {
-      // Header is configured in _layout.tsx, but you could use Stack.Screen here
-      // or use setOptions if using a header component
+    if (topic) {
+      // You could update header options here if needed
     }
   }, [topic]);
 
@@ -470,6 +518,9 @@ export default function TopicDetailScreen() {
     return (
       <ThemedView style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+          Loading conversation...
+        </ThemedText>
       </ThemedView>
     );
   }
@@ -477,56 +528,96 @@ export default function TopicDetailScreen() {
   if (!topic) {
     return (
       <ThemedView style={[styles.container, styles.centerContent]}>
-        <ThemedText type="body" style={{ color: theme.textSecondary }}>
-          Topic not found
+        <Feather name="alert-circle" size={48} color={theme.textSecondary} />
+        <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+          Conversation not found
         </ThemedText>
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.backButton, { marginTop: Spacing.lg }]}
+        >
+          <ThemedText type="body" style={{ color: theme.primary }}>
+            Go Back
+          </ThemedText>
+        </Pressable>
       </ThemedView>
     );
   }
 
   return (
     <>
-      {/* Optional: Custom header configuration */}
+      <Stack.Screen
+        options={{
+          headerTitle: topic.title,
+          headerBackTitle: 'Back',
+          headerTransparent: true,
+          headerBlurEffect: isDark ? 'dark' : 'light',
+          headerTintColor: theme.text,
+        }}
+      />
+      
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ThemedView style={styles.container}>
+          {/* Community Header */}
+          <View style={[styles.communityHeader, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={styles.communityInfo}>
+              <Feather name="users" size={16} color={theme.primary} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                {communityName}
+              </ThemedText>
+            </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Feather name="message-circle" size={14} color={theme.textSecondary} />
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                  {topic.messageCount} messages
+                </ThemedText>
+              </View>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Started by @{topic.creatorUsername}
+              </ThemedText>
+            </View>
+          </View>
+
           <FlatList
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <MessageBubble 
-                message={item} 
-                isOwn={item.authorId === user?.id}
-                onDelete={item.authorId === user?.id ? () => handleDeleteMessage(item.id) : undefined}
-              />
-            )}
-            ListHeaderComponent={
-              <View style={styles.topicHeader}>
-                <ThemedText type="h3">{topic.title}</ThemedText>
-                <View style={styles.topicMeta}>
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                    Started by @{topic.creatorUsername}
-                  </ThemedText>
-                  <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.md }}>
-                    {topic.messageCount} {topic.messageCount === 1 ? 'message' : 'messages'}
-                  </ThemedText>
-                </View>
-              </View>
-            }
+            renderItem={({ item, index }) => {
+              const previousMessage = index > 0 ? messages[index - 1] : null;
+              const showAvatar = !previousMessage || 
+                previousMessage.authorId !== item.authorId || 
+                (new Date(item.createdAt).getTime() - new Date(previousMessage.createdAt).getTime()) > 5 * 60 * 1000; // 5 minutes
+              
+              return (
+                <MessageBubble 
+                  message={item} 
+                  isOwn={item.authorId === user?.id}
+                  onDelete={item.authorId === user?.id ? () => handleDeleteMessage(item.id) : undefined}
+                  showAvatar={showAvatar}
+                />
+              );
+            }}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
-                  No messages yet. Start the conversation!
+                <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Feather name="message-circle" size={40} color={theme.textSecondary} />
+                </View>
+                <ThemedText type="h4" style={{ marginTop: Spacing.lg, textAlign: 'center' }}>
+                  No messages yet
+                </ThemedText>
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.sm }}>
+                  Start the conversation!
                 </ThemedText>
               </View>
             }
             contentContainerStyle={[
               styles.content,
-              { paddingTop, paddingBottom: Spacing.lg },
+              { paddingTop: Spacing.lg, paddingBottom: Spacing['3xl'] },
             ]}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -534,78 +625,106 @@ export default function TopicDetailScreen() {
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 tintColor={theme.primary}
+                colors={[theme.primary]}
               />
             }
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             onContentSizeChange={() => {
-              if (messages.length > 0) {
-                flatListRef.current?.scrollToEnd({ animated: false });
+              if (messages.length > 0 && !showScrollButton) {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                }, 100);
               }
             }}
           />
 
-          {user ? (
-            <View>
-              {showMentions && mentionSuggestions.length > 0 ? (
-                <View style={[styles.mentionDropdown, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
-                  {mentionSuggestions.map((suggestion) => (
-                    <Pressable
-                      key={suggestion.userId}
-                      style={({ pressed }) => [
-                        styles.mentionItem,
-                        { backgroundColor: pressed ? theme.backgroundSecondary : 'transparent' }
-                      ]}
-                      onPress={() => insertMention(suggestion.username)}
-                    >
-                      <View style={[styles.mentionAvatar, { backgroundColor: AVATAR_COLORS[suggestion.avatarColor % AVATAR_COLORS.length] }]}>
-                        <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                          {suggestion.username.charAt(0).toUpperCase()}
-                        </ThemedText>
-                      </View>
-                      <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                        @{suggestion.username}
-                      </ThemedText>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
+          {/* Scroll to bottom button */}
+          {showScrollButton && (
+            <ScrollToBottomButton 
+              onPress={handleScrollToBottom} 
+              unreadCount={unreadCount} 
+            />
+          )}
 
-              {selectedImageUri ? (
-                <View style={[styles.selectedImagePreview, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                  <Image
-                    source={{ uri: selectedImageUri }}
-                    style={styles.selectedImageThumbnail}
-                    contentFit="cover"
-                  />
-                  <Pressable
-                    onPress={() => setSelectedImageUri(null)}
-                    style={styles.removeImageButton}
-                  >
-                    <Feather name="x" size={18} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-              ) : null}
-              
-              <View style={[styles.composer, { paddingBottom: paddingBottom + Spacing.md, backgroundColor: theme.backgroundDefault, borderTopColor: theme.border }]}>
-                <TextInput
-                  value={newMessage}
-                  onChangeText={handleTextChange}
-                  placeholder="Write a message... Use @ to mention"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: theme.backgroundSecondary,
-                      color: theme.text,
-                    },
-                  ]}
-                  multiline
-                  maxLength={1000}
-                />
+          {/* Mention suggestions dropdown */}
+          {showMentions && mentionSuggestions.length > 0 && (
+            <BlurView
+              intensity={80}
+              tint={isDark ? 'dark' : 'light'}
+              style={styles.mentionDropdown}
+            >
+              {mentionSuggestions.map((suggestion) => (
                 <Pressable
-                  onPress={handlePickImage}
+                  key={suggestion.userId}
+                  style={({ pressed }) => [
+                    styles.mentionItem,
+                    { backgroundColor: pressed ? theme.backgroundSecondary : 'transparent' }
+                  ]}
+                  onPress={() => insertMention(suggestion.username)}
+                >
+                  <View style={[styles.mentionAvatar, { backgroundColor: AVATAR_COLORS[suggestion.avatarColor % AVATAR_COLORS.length] }]}>
+                    <Text style={styles.mentionAvatarText}>
+                      {suggestion.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
+                    @{suggestion.username}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </BlurView>
+          )}
+
+          {/* Selected image preview */}
+          {selectedImageUri && (
+            <View style={[styles.selectedImagePreview, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+              <Image
+                source={{ uri: selectedImageUri }}
+                style={styles.selectedImageThumbnail}
+                contentFit="cover"
+              />
+              <View style={styles.selectedImageInfo}>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Image ready to send
+                </ThemedText>
+              </View>
+              <Pressable
+                onPress={() => setSelectedImageUri(null)}
+                style={styles.removeImageButton}
+              >
+                <Feather name="x" size={18} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Message composer */}
+          {user && (
+            <View style={[
+              styles.composerContainer,
+              { 
+                paddingBottom: paddingBottom + Spacing.md,
+                backgroundColor: theme.backgroundDefault,
+                borderTopColor: theme.border,
+              }
+            ]}>
+              <View style={styles.composer}>
+                {/* Attachment button with menu */}
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      'Add Attachment',
+                      'Choose an option',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Photo Library', onPress: handlePickImage },
+                        { text: 'Take Photo', onPress: handleTakePhoto },
+                      ]
+                    );
+                  }}
                   disabled={sending || uploadingImage}
                   style={({ pressed }) => [
-                    styles.imageButton,
+                    styles.attachmentButton,
                     {
                       backgroundColor: theme.backgroundSecondary,
                       opacity: pressed ? 0.9 : 1,
@@ -613,14 +732,36 @@ export default function TopicDetailScreen() {
                   ]}
                 >
                   <Feather 
-                    name="image" 
-                    size={20} 
+                    name="plus" 
+                    size={22} 
                     color={theme.primary}
                   />
                 </Pressable>
+
+                {/* Message input */}
+                <TextInput
+                  ref={inputRef}
+                  value={newMessage}
+                  onChangeText={handleTextChange}
+                  placeholder="Type a message..."
+                  placeholderTextColor={theme.textSecondary}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  multiline
+                  maxLength={1000}
+                  textAlignVertical="center"
+                />
+
+                {/* Send button */}
                 <Pressable
                   onPress={handleSend}
-                  disabled={(!newMessage.trim() && !selectedImageUri) || sending}
+                  disabled={(!newMessage.trim() && !selectedImageUri) || sending || uploadingImage}
                   style={({ pressed }) => [
                     styles.sendButton,
                     {
@@ -629,7 +770,7 @@ export default function TopicDetailScreen() {
                     },
                   ]}
                 >
-                  {sending ? (
+                  {sending || uploadingImage ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Feather 
@@ -640,8 +781,20 @@ export default function TopicDetailScreen() {
                   )}
                 </Pressable>
               </View>
+              
+              {/* Character counter */}
+              {newMessage.length > 0 && (
+                <ThemedText type="small" style={{ 
+                  color: newMessage.length > 900 ? Colors.light.error : theme.textSecondary, 
+                  textAlign: 'right', 
+                  marginTop: Spacing.xs,
+                  marginHorizontal: Spacing.lg,
+                }}>
+                  {newMessage.length}/1000
+                </ThemedText>
+              )}
             </View>
-          ) : null}
+          )}
         </ThemedView>
       </KeyboardAvoidingView>
     </>
@@ -658,65 +811,134 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
   },
-  topicHeader: {
-    marginBottom: Spacing.xl,
-    paddingBottom: Spacing.lg,
+  communityHeader: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  topicMeta: {
+  communityInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  messageAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: Spacing.sm,
+    ...Shadows.xs,
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   messageBubble: {
     borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  messageAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.sm,
-    marginLeft: Spacing.sm,
-  },
-  messageContent: {
-    flex: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    ...Shadows.sm,
   },
   messageHeader: {
+    marginBottom: Spacing.xs,
+  },
+  authorName: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  messageContent: {
+    marginBottom: Spacing.xs,
+  },
+  messageFooter: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  timeText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  imageContainer: {
+    position: 'relative',
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  messageImage: {
+    width: '100%',
+    aspectRatio: 1,
+    maxWidth: 200,
+    borderRadius: BorderRadius.md,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: Spacing.xs,
+    right: Spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 4,
+    borderRadius: BorderRadius.xs,
   },
   emptyState: {
-    paddingVertical: Spacing['3xl'],
+    paddingVertical: Spacing['4xl'],
     alignItems: 'center',
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  composerContainer: {
+    borderTopWidth: 1,
+    paddingTop: Spacing.md,
   },
   composer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
+    gap: Spacing.sm,
+  },
+  attachmentButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     fontSize: 16,
-    maxHeight: 100,
-    marginRight: Spacing.sm,
+    maxHeight: 120,
+    minHeight: 44,
+    borderWidth: 1,
   },
   sendButton: {
     width: 44,
@@ -725,97 +947,86 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  imageButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.sm,
-  },
   selectedImagePreview: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
     borderTopWidth: 1,
+    marginTop: Spacing.md,
   },
   selectedImageThumbnail: {
-    width: 50,
-    height: 50,
-    borderRadius: BorderRadius.sm,
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.md,
+  },
+  selectedImageInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
   },
   removeImageButton: {
-    marginLeft: Spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#E53935',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  messageImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: BorderRadius.md,
+    ...Shadows.xs,
   },
   mentionDropdown: {
-    borderTopWidth: 1,
-    paddingVertical: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+    ...Shadows.md,
   },
   mentionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.md,
   },
   mentionAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lineupPreviewCard: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
+  mentionAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  lineupPreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  lineupPreviewIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.sm,
-  },
-  lineupPreviewInfo: {
-    flex: 1,
-  },
-  lineupImageCard: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  lineupImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: BorderRadius.md - 1,
-  },
-  lineupImageOverlay: {
+  scrollToBottomButton: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: Spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    bottom: 100,
+    right: Spacing.lg,
+    zIndex: 1000,
+  },
+  fab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.md,
+  },
+  fabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E53935',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  fabBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

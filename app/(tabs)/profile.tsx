@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Alert, Platform, Modal, TextInput, ScrollView } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  Pressable, 
+  Alert, 
+  Platform, 
+  Modal, 
+  TextInput, 
+  ScrollView,
+  StatusBar 
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,19 +22,10 @@ import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { loadLineups, loadUser, saveUser, clearAllData, UserData } from '@/data/storage';
 import { Lineup } from '@/data/types';
 import { useAuth } from '@/services/authContext';
+import { useScreenInsets } from '@/hooks/use-screen-insets'; // Add this import
 
-// Note: ScreenScrollView might need to be replaced with a regular ScrollView
-// or we need to import it. Let's use ScrollView for now.
-
-// You'll need to add these avatar images to your assets folder
-// Or we can use a placeholder system
-const avatarImages = [
-  require('@/assets/avatars/avatar-1.png'),
-  require('@/assets/avatars/avatar-2.png'),
-  require('@/assets/avatars/avatar-3.png'),
-  require('@/assets/avatars/avatar-4.png'),
-  require('@/assets/avatars/avatar-5.png'),
-];
+// Note: You can create custom avatar components or use initials
+const AVATAR_COLORS = ['#1B5E20', '#0D47A1', '#4A148C', '#B71C1C', '#E65100'];
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -104,6 +105,8 @@ function SettingsItem({
 export default function ProfileScreen() {
   const { theme, isDark } = useTheme();
   const { signOut, profile, updateProfile } = useAuth();
+  const { paddingTop } = useScreenInsets(); // Get safe area insets
+  
   const [user, setUser] = useState<UserData | null>(null);
   const [lineups, setLineups] = useState<Lineup[]>([]);
   const [selectedAvatar, setSelectedAvatar] = useState(0);
@@ -163,65 +166,48 @@ export default function ProfileScreen() {
   };
 
   const handlePickImage = async () => {
-    if (Platform.OS === 'web') {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          const imageUri = `data:image/jpeg;base64,${asset.base64}`;
-          setProfileImage(imageUri);
-        } else {
-          setProfileImage(asset.uri);
-        }
-      }
-    } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please allow access to your photo library to change your profile picture.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Open Settings', 
-              onPress: async () => {
-                try {
-                  const { Linking } = await import('react-native');
-                  await Linking.openSettings();
-                } catch (error) {
-                  console.error('Error opening settings:', error);
-                }
+    // Request permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please allow access to your photo library to change your profile picture.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Open Settings', 
+            onPress: async () => {
+              try {
+                const { Linking } = await import('react-native');
+                await Linking.openSettings();
+              } catch (error) {
+                console.error('Error opening settings:', error);
               }
             }
-          ]
-        );
-        return;
-      }
+          }
+        ]
+      );
+      return;
+    }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        base64: true,
-      });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+      base64: Platform.OS === 'web', // Base64 only needed for web
+    });
 
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        if (asset.base64) {
-          const imageUri = `data:image/jpeg;base64,${asset.base64}`;
-          setProfileImage(imageUri);
-        } else {
-          setProfileImage(asset.uri);
-        }
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (Platform.OS === 'web' && asset.base64) {
+        // For web, use base64
+        const imageUri = `data:image/jpeg;base64,${asset.base64}`;
+        setProfileImage(imageUri);
+      } else {
+        // For mobile, use the URI directly
+        setProfileImage(asset.uri);
       }
     }
   };
@@ -246,14 +232,21 @@ export default function ProfileScreen() {
         setUser(updatedUser);
       }
       
+      // Only send the profile image URL if we're not using base64
+      // For mobile, you'd need to upload the image to a server first
+      const avatarUrl = Platform.OS === 'web' && profileImage?.startsWith('data:') 
+        ? profileImage 
+        : null;
+      
       await updateProfile({ 
         username: editUsername.trim(),
         avatar_color: selectedAvatar,
-        avatar_url: profileImage,
+        avatar_url: avatarUrl,
       });
       
       setShowEditModal(false);
     } catch (error) {
+      console.error('Error saving profile:', error);
       Alert.alert('Error', 'Failed to save profile. Please try again.');
     } finally {
       setIsSaving(false);
@@ -329,101 +322,121 @@ export default function ProfileScreen() {
     year: 'numeric',
   }) : '';
 
+  // Get user initials for avatar fallback
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 2);
+  };
+
   return (
-    <ScrollView style={{ flex: 1 }}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarSection}>
-          <Pressable onPress={handleOpenEditModal} style={styles.avatarContainer}>
-            {profileImage ? (
-              <Image 
-                source={{ uri: profileImage }} 
-                style={styles.avatarImage}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={[styles.avatarImage, { backgroundColor: Colors.light.primary }]}>
-                <Feather name="user" size={50} color="#FFFFFF" />
+    <ThemedView style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Header */}
+        <View style={[styles.profileHeader, { paddingTop }]}>
+          <View style={styles.avatarSection}>
+            <Pressable onPress={handleOpenEditModal} style={styles.avatarContainer}>
+              {profileImage ? (
+                <Image 
+                  source={{ uri: profileImage }} 
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                  transition={200}
+                />
+              ) : (
+                <View style={[
+                  styles.avatarFallback, 
+                  { backgroundColor: AVATAR_COLORS[selectedAvatar % AVATAR_COLORS.length] }
+                ]}>
+                  <ThemedText type="h3" style={styles.avatarInitials}>
+                    {getUserInitials(displayName)}
+                  </ThemedText>
+                </View>
+              )}
+              <View style={[styles.editBadge, { backgroundColor: theme.primary }]}>
+                <Feather name="edit-2" size={12} color="#FFFFFF" />
               </View>
-              // Note: If you have avatar images, use:
-              // <Image 
-              //   source={avatarImages[selectedAvatar] || avatarImages[0]} 
-              //   style={styles.avatarImage}
-              //   contentFit="cover"
-              // />
-            )}
-            <View style={[styles.editBadge, { backgroundColor: theme.primary }]}>
-              <Feather name="edit-2" size={12} color="#FFFFFF" />
-            </View>
+            </Pressable>
+          </View>
+          
+          <Pressable onPress={handleOpenEditModal} style={styles.nameContainer}>
+            <ThemedText type="h3" style={styles.userName}>{displayName}</ThemedText>
+            <Feather name="edit-2" size={16} color={theme.textSecondary} style={styles.editIcon} />
           </Pressable>
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            Member since {memberSince}
+          </ThemedText>
         </View>
-        
-        <Pressable onPress={handleOpenEditModal} style={styles.nameContainer}>
-          <ThemedText type="h3" style={styles.userName}>{displayName}</ThemedText>
-          <Feather name="edit-2" size={16} color={theme.textSecondary} style={styles.editIcon} />
-        </Pressable>
-        <ThemedText type="small" style={{ color: theme.textSecondary }}>
-          Member since {memberSince}
-        </ThemedText>
-      </View>
 
-      <View style={styles.statsRow}>
-        <StatCard icon="clipboard" value={lineups.length} label="Lineups" />
-        <StatCard icon="arrow-up" value={totalVotes} label="Votes" />
-        <StatCard icon="award" value={0} label="Wins" />
-      </View>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <StatCard icon="clipboard" value={lineups.length} label="Lineups" />
+          <StatCard icon="arrow-up" value={totalVotes} label="Votes" />
+          <StatCard icon="award" value={0} label="Wins" />
+        </View>
 
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>Profile</ThemedText>
-        <SettingsItem 
-          icon="user" 
-          label="Edit Profile" 
-          value={displayName}
-          onPress={handleOpenEditModal}
-        />
-      </View>
+        {/* Sections */}
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>Profile</ThemedText>
+          <SettingsItem 
+            icon="user" 
+            label="Edit Profile" 
+            value={displayName}
+            onPress={handleOpenEditModal}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>Preferences</ThemedText>
-        <SettingsItem 
-          icon="grid" 
-          label="Favorite Formation" 
-          value={user?.favoriteFormation || '4-3-3'}
-        />
-        <SettingsItem 
-          icon="moon" 
-          label="Appearance" 
-          value={isDark ? 'Dark' : 'Light'}
-        />
-      </View>
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>Preferences</ThemedText>
+          <SettingsItem 
+            icon="grid" 
+            label="Favorite Formation" 
+            value={user?.favoriteFormation || '4-3-3'}
+          />
+          <SettingsItem 
+            icon="moon" 
+            label="Appearance" 
+            value={isDark ? 'Dark' : 'Light'}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>App</ThemedText>
-        <SettingsItem icon="info" label="About DraftMaster FC" />
-        <SettingsItem icon="file-text" label="Terms of Service" />
-        <SettingsItem icon="shield" label="Privacy Policy" />
-      </View>
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>App</ThemedText>
+          <SettingsItem icon="info" label="About DraftMaster FC" />
+          <SettingsItem icon="file-text" label="Terms of Service" />
+          <SettingsItem icon="shield" label="Privacy Policy" />
+        </View>
 
-      <View style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>Account</ThemedText>
-        <SettingsItem 
-          icon="log-out" 
-          label="Log Out" 
-          onPress={handleLogout}
-        />
-        <SettingsItem 
-          icon="trash-2" 
-          label="Clear All Data" 
-          isDestructive
-          onPress={handleClearData}
-        />
-      </View>
+        <View style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>Account</ThemedText>
+          <SettingsItem 
+            icon="log-out" 
+            label="Log Out" 
+            onPress={handleLogout}
+          />
+          <SettingsItem 
+            icon="trash-2" 
+            label="Clear All Data" 
+            isDestructive
+            onPress={handleClearData}
+          />
+        </View>
 
-      <View style={styles.footer}>
-        <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: 'center' }}>
-          DraftMaster FC v1.0.0
-        </ThemedText>
-      </View>
+        <View style={styles.footer}>
+          <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+            DraftMaster FC v1.0.0
+          </ThemedText>
+        </View>
+      </ScrollView>
 
+      {/* Edit Profile Modal */}
       <Modal
         visible={showEditModal}
         animationType="slide"
@@ -445,10 +458,16 @@ export default function ProfileScreen() {
                   source={{ uri: profileImage }} 
                   style={styles.modalAvatarImage}
                   contentFit="cover"
+                  transition={200}
                 />
               ) : (
-                <View style={[styles.modalAvatarImage, { backgroundColor: Colors.light.primary }]}>
-                  <Feather name="user" size={50} color="#FFFFFF" />
+                <View style={[
+                  styles.modalAvatarFallback, 
+                  { backgroundColor: AVATAR_COLORS[selectedAvatar % AVATAR_COLORS.length] }
+                ]}>
+                  <ThemedText type="h3" style={styles.modalAvatarInitials}>
+                    {getUserInitials(editUsername || displayName)}
+                  </ThemedText>
                 </View>
               )}
               <View style={[styles.cameraButton, { backgroundColor: theme.primary }]}>
@@ -480,22 +499,24 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.avatarSelectSection}>
-              <ThemedText type="body" style={styles.inputLabel}>Choose Avatar</ThemedText>
+              <ThemedText type="body" style={styles.inputLabel}>Choose Default Avatar</ThemedText>
               <View style={styles.avatarOptionsRow}>
-                {[0, 1, 2, 3, 4].map((index) => (
+                {AVATAR_COLORS.map((color, index) => (
                   <Pressable
                     key={index}
                     onPress={() => {
                       setSelectedAvatar(index);
-                      setProfileImage(null);
+                      setProfileImage(null); // Clear custom image when choosing default avatar
                     }}
                     style={[
                       styles.avatarOptionItem,
                       selectedAvatar === index && !profileImage && styles.avatarOptionItemSelected,
                     ]}
                   >
-                    <View style={[styles.avatarOptionImage, { backgroundColor: Colors.light.primary }]}>
-                      <Feather name="user" size={24} color="#FFFFFF" />
+                    <View style={[styles.avatarOptionImage, { backgroundColor: color }]}>
+                      <ThemedText type="small" style={styles.avatarOptionInitials}>
+                        {getUserInitials(editUsername || displayName)}
+                      </ThemedText>
                     </View>
                   </Pressable>
                 ))}
@@ -522,15 +543,24 @@ export default function ProfileScreen() {
           </ThemedView>
         </View>
       </Modal>
-    </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Spacing['3xl'],
+  },
   profileHeader: {
     alignItems: 'center',
     marginBottom: Spacing['3xl'],
-    marginTop: Spacing.xl,
+    paddingTop: Spacing['3xl'], // Added more top padding
   },
   avatarSection: {
     alignItems: 'center',
@@ -541,22 +571,32 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120, // Increased size
+    height: 120,
+    borderRadius: 60,
+  },
+  avatarFallback: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '600',
   },
   editBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
   },
   nameContainer: {
@@ -631,6 +671,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.xl,
     padding: Spacing.xl,
     paddingBottom: Spacing['3xl'],
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -647,19 +688,29 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   modalAvatarImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+  },
+  modalAvatarFallback: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalAvatarInitials: {
+    color: '#FFFFFF',
+    fontSize: 36,
+    fontWeight: '600',
   },
   cameraButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -674,6 +725,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     marginBottom: Spacing.sm,
+    fontWeight: '600',
   },
   input: {
     height: 48,
@@ -715,6 +767,11 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarOptionInitials: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   modalButtons: {
     flexDirection: 'row',

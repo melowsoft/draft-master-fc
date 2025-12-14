@@ -8,14 +8,18 @@ function RootLayoutNav() {
   const { theme } = useTheme();
   const { isAuthenticated, isLoading } = useAuth();
 
-    useEffect(() => {    
+  // Handle initial auth state
+  useEffect(() => {    
     if (!isLoading) {
       if (isAuthenticated) {
-        console.log('✅ User authenticated, navigating to tabs...');
-        router.replace('/(tabs)');
+        console.log('✅ User authenticated');
+        // Don't navigate here, let the render handle it
       } else {
-        console.log('❌ User not authenticated, staying on auth');
-        // Already on auth screen
+        console.log('❌ User not authenticated');
+        // Ensure we're on auth screen if not authenticated
+        if (router.canGoBack()) {
+          router.replace('/(auth)');
+        }
       }
     }
   }, [isAuthenticated, isLoading]);
@@ -28,13 +32,56 @@ function RootLayoutNav() {
     );
   }
 
+  // Show auth screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="auth" />
+      </Stack>
+    );
+  }
+
+  // Show main app screens if authenticated
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
-        <Stack.Screen name="auth" />
-      ) : (
-        <Stack.Screen name="(tabs)" />
-      )}
+      <Stack.Screen name="(tabs)" />
+      {/* Modal and other authenticated screens */}
+      <Stack.Screen
+        name="create-lineup"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="create-community"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="create-topic"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="community-detail/[id]"
+      />
+      <Stack.Screen
+        name="community-topics/[id]"
+      />
+      <Stack.Screen
+        name="topic-detail/[id]"
+      />
     </Stack>
   );
 }

@@ -45,6 +45,7 @@ export default function CreateCommunityScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
         navigation.goBack();
+        console.log('Navigating to community:', result.community);
         navigation.navigate('CommunityDetail', { communityId: result.community.id });
       } else {
         Alert.alert('Error', result.error || 'Failed to create community');

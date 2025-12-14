@@ -4,77 +4,67 @@
     "slug": "draftmaster-fc",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
+    "scheme": "draftmasterfc",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B5E20"
+      "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
+      "bundleIdentifier": "com.draftmasterfc.app",
+      "buildNumber": "1.0.0",
       "supportsTablet": true,
-      "bundleIdentifier": "com.draftmaster.fc",
+      "config": {
+        "usesAppleSignIn": true
+      },
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to upload profile pictures and lineup images.",
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to use the camera to take photos for profile pictures."
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["draftmasterfc"]
+          }
+        ],
+        "NSFaceIDUsageDescription": "Allow DraftMaster FC to use Face ID for secure authentication"
       }
     },
     "android": {
+      "package": "com.draftmasterfc.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1B5E20"
-      },
-      "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.CAMERA"
-      ],
-      "package": "com.draftmaster.fc"
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
-        "expo-splash-screen",
+        "expo-apple-authentication",
         {
-          "image": "./assets/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#1B5E20",
-          "dark": {
-            "backgroundColor": "#0D3311"
-          }
+          "appleTeamId": "V4T2JT845M"
         }
       ],
+      // [
+      //   "expo-auth-session",
+      //   {
+      //     "redirectUri": "draftmasterfc://"
+      //   }
+      // ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to upload profile pictures and lineup images.",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera to take photos for profile pictures."
+          "photosPermission": "The app accesses your photos to let you share lineups and chat images.",
+          "cameraPermission": "The app accesses your camera to take photos for lineups."
         }
       ]
     ],
-    "scheme": "draftmasterfc",
     "extra": {
-      "router": {
-        "origin": false
-      },
       "eas": {
-        "projectId": "your-eas-project-id-here"
+        "projectId": "your-eas-project-id"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/your-project-id"
     }
   }
 }

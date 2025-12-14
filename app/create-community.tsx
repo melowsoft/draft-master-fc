@@ -49,16 +49,20 @@ export default function CreateCommunityScreen() {
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        // Go back to previous screen (e.g., communities tab)
-        router.back();
-        // Then navigate to the new community detail
-        setTimeout(() => {
-          router.push(`/community-detail/${result.community.id}`);
-        }, 100);
+        
+        console.log('Community created successfully:', result.community);
+        
+        // IMPORTANT: Use replace to prevent going back to create screen
+        router.replace({
+          pathname: `/community-detail/${result.community.id}`,
+          params: { fresh: 'true' } // Optional: add param to indicate fresh creation
+        });
+        
       } else {
         Alert.alert('Error', result.error || 'Failed to create community');
       }
     } catch (error) {
+      console.error('Create community error:', error);
       Alert.alert('Error', 'Failed to create community');
     } finally {
       setIsCreating(false);
@@ -71,7 +75,6 @@ export default function CreateCommunityScreen() {
 
   return (
     <>
-      {/* Optional: Custom header */}
       <Stack.Screen
         options={{
           headerTitle: 'Create Community',

@@ -12,6 +12,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signInAnonymously: () => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
 }
@@ -215,6 +217,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function signInAnonymously(): Promise<{ success: boolean; error?: string }> {
+    console.log('👤 Creating anonymous user...');
+    
+    try {
+      // Create a unique anonymous user ID
+      const anonymousId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const username = `Guest${Math.floor(Math.random() * 10000)}`;
+      const avatarColor = Math.floor(Math.random() * 5);
+      const createdAt = new Date().toISOString();
+      
+      const anonymousUser: AnonymousUser = {
+        id: anonymousId,
+        username,
+        avatarColor,
+        createdAt,
+      };
+      
+      // Save to async storage
+      await AsyncStorage.setItem(ANONYMOUS_USER_KEY, JSON.stringify(anonymousUser));
+      
+      // Set user state
+      setAnonymousUser(anonymousUser);
+      setProfile({
+        id: anonymousId,
+        username,
+        avatar_url: null,
+        avatar_color: avatarColor,
+        favorite_formation: '4-3-3',
+        created_at: createdAt,
+        updated_at: createdAt,
+      });
+      
+      console.log('✅ Anonymous user created:', username);
+      return { success: true };
+    } catch (error: any) {
+      console.log('❌ Anonymous sign in error:', error.message);
+      return { success: false, error: error.message || 'Failed to create anonymous user' };
+    }
+  }
+
+  async function resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
+    console.log('📧 Resetting password for:', email);
+    
+    if (!isSupabaseConfigured() || !supabase) {
+      return { success: false, error: 'Backend not configured' };
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      
+      if (error) {
+        console.log('❌ Reset password error:', error.message);
+        return { success: false, error: error.message };
+      }
+      
+      console.log('✅ Password reset email sent');
+      return { success: true };
+    } catch (error: any) {
+      console.log('❌ Reset password exception:', error.message);
+      return { success: false, error: error.message || 'Failed to send reset email' };
+    }
+  }
+
   async function signOut(): Promise<void> {
     console.log('🚪 Signing out...');
     
@@ -275,6 +340,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: Boolean(user || anonymousUser),
     signInWithEmail,
     signUpWithEmail,
+    signInAnonymously,
+    resetPassword,
     signOut,
     updateProfile,
   };
