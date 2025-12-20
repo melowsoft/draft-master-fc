@@ -1,29 +1,28 @@
+import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-  Platform,
-  ScrollView,
+    ActivityIndicator,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/Button';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { Colors, Spacing, BorderRadius } from '@/constants/theme';
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
 export default function AuthScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, signInAnonymously, resetPassword } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInAnonymously, resetPassword } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -93,28 +92,6 @@ export default function AuthScreen() {
     }
 
     setIsLoading(false);
-  };
-
-  const handleGoogleAuth = async () => {
-    setError(null);
-    setIsLoading(true);
-    const result = await signInWithGoogle();
-    setIsLoading(false);
-
-    if (!result.success && result.error !== 'Sign in cancelled') {
-      setError(result.error || 'Failed to sign in with Google');
-    }
-  };
-
-  const handleAppleAuth = async () => {
-    setError(null);
-    setIsLoading(true);
-    const result = await signInWithApple();
-    setIsLoading(false);
-
-    if (!result.success && result.error !== 'Sign in cancelled') {
-      setError(result.error || 'Failed to sign in with Apple');
-    }
   };
 
   const handleGuestContinue = async () => {
@@ -256,32 +233,6 @@ export default function AuthScreen() {
             <>
               <View style={styles.divider}>
                 <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or continue with</ThemedText>
-                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              </View>
-
-              <View style={styles.socialButtons}>
-                <Pressable
-                  style={[styles.socialButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
-                  onPress={handleGoogleAuth}
-                  disabled={isLoading}
-                >
-                  <View style={styles.googleIcon}>
-                    <ThemedText style={styles.googleText}>G</ThemedText>
-                  </View>
-                  <ThemedText style={styles.socialButtonText}>Google</ThemedText>
-                </Pressable>
-
-                {Platform.OS === 'ios' || Platform.OS === 'web' ? (
-                  <Pressable
-                    style={[styles.socialButton, { backgroundColor: '#000000' }]}
-                    onPress={handleAppleAuth}
-                    disabled={isLoading}
-                  >
-                    <Feather name="command" size={20} color="#FFFFFF" />
-                    <ThemedText style={[styles.socialButtonText, { color: '#FFFFFF' }]}>Apple</ThemedText>
-                  </Pressable>
-                ) : null}
               </View>
             </>
           ) : null}
@@ -293,7 +244,7 @@ export default function AuthScreen() {
               </Pressable>
             ) : mode === 'login' ? (
               <View style={styles.switchRow}>
-                <ThemedText style={{ color: theme.textSecondary }}>Don't have an account? </ThemedText>
+                <ThemedText style={{ color: theme.textSecondary }}>Don&apos;t have an account? </ThemedText>
                 <Pressable onPress={() => setMode('signup')}>
                   <ThemedText style={{ color: theme.primary, fontWeight: '600' }}>Sign Up</ThemedText>
                 </Pressable>

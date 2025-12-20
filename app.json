@@ -19,9 +19,6 @@
       "bundleIdentifier": "com.draftmasterfc.app",
       "buildNumber": "1.0.0",
       "supportsTablet": true,
-      "config": {
-        "usesAppleSignIn": true
-      },
       "infoPlist": {
         "CFBundleURLTypes": [
           {
@@ -54,12 +51,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      [
-        "expo-apple-authentication",
-        {
-          "appleTeamId": "V4T2JT845M"
-        }
-      ],
       [
         "expo-image-picker",
         {

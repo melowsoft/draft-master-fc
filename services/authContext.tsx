@@ -3,7 +3,6 @@ import { Session, User } from '@supabase/supabase-js';
 import { router } from 'expo-router';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Profile } from './database.types';
-import SubscriptionService, { UserSubscription } from './subscriptionService';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 interface AuthContextType {
@@ -12,16 +11,12 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  subscription: UserSubscription | null;
-  isLoadingSubscription: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInAnonymously: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
-  checkSubscription: () => Promise<void>;
-  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,20 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [anonymousUser, setAnonymousUser] = useState<AnonymousUser | null>(null);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
-  const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
 
   useEffect(() => {
     initializeAuth();
   }, []);
-
-  useEffect(() => {
-    if (user && profile) {
-      checkSubscription();
-    } else {
-      setSubscription(null);
-    }
-  }, [user, profile]);
 
   async function initializeAuth() {
     setIsLoading(true);
@@ -85,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               await fetchProfile(session.user.id);
             } else {
               setProfile(null);
-              setSubscription(null);
             }
           }
         );
@@ -175,55 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return data;
   }
-
-  const checkSubscription = async () => {
-    console.log('🔍 Checking subscription status...');
-    setIsLoadingSubscription(true);
-    try {
-      const subStatus = await SubscriptionService.getInstance().getSubscriptionStatus();
-      console.log('Subscription status:', subStatus);
-      
-      // Grant a local 7-day trial for anonymous users only
-      if (!subStatus.isActive && !user && anonymousUser?.createdAt) {
-        const trialDaysLeft = SubscriptionService.getInstance().calculateNewUserTrial(anonymousUser.createdAt);
-        if (trialDaysLeft > 0) {
-          console.log('🎁 New user trial:', trialDaysLeft, 'days left');
-          setSubscription({
-            ...subStatus,
-            isTrial: true,
-            trialDaysLeft,
-            planId: 'trial',
-          });
-          return;
-        }
-      }
-      
-      setSubscription(subStatus);
-      
-      // Configure RevenueCat with user ID if available
-      if (user?.id) {
-        await SubscriptionService.getInstance().configure(user.id);
-      }
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      // Set default subscription on error
-      setSubscription({
-        isActive: false,
-        isTrial: false,
-        trialDaysLeft: 0,
-        planId: 'free',
-        expiresAt: null,
-        autoRenew: false,
-      });
-    } finally {
-      setIsLoadingSubscription(false);
-    }
-  };
-
-  const refreshSubscription = async () => {
-    console.log('🔄 Refreshing subscription...');
-    await checkSubscription();
-  };
 
   async function signInWithEmail(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     console.log('🔐 Attempting sign in with email:', email);
@@ -315,16 +250,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: createdAt,
       });
       
-      // Give anonymous users a trial
-      setSubscription({
-        isActive: false,
-        isTrial: true,
-        trialDaysLeft: 7, // 7-day trial for anonymous users
-        planId: 'trial',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        autoRenew: false,
-      });
-      
       console.log('✅ Anonymous user created:', username);
       return { success: true };
     } catch (error: any) {
@@ -367,7 +292,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setAnonymousUser(null);
-    setSubscription(null);
     await AsyncStorage.removeItem(ANONYMOUS_USER_KEY);
     
     // Navigate to auth screen
@@ -418,16 +342,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     isLoading,
     isAuthenticated: Boolean(user || anonymousUser),
-    subscription,
-    isLoadingSubscription,
     signInWithEmail,
     signUpWithEmail,
     signInAnonymously,
     resetPassword,
     signOut,
     updateProfile,
-    checkSubscription,
-    refreshSubscription,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

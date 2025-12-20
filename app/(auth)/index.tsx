@@ -97,8 +97,8 @@ export default function AuthScreen() {
         if (result.error) {
           setMessage(result.error);
         }
-        console.log('✅ Signup successful, navigating to subscription...');
-        router.replace('/subscription?redirect=/(tabs)');
+        console.log('✅ Signup successful, navigating to tabs...');
+        router.replace('/(tabs)');
       } else {
         setError(result.error || 'Failed to create account');
       }

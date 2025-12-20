@@ -23,7 +23,6 @@ import { Lineup } from '@/data/types';
 import { useScreenInsets } from '@/hooks/use-screen-insets'; // Add this import
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { useRouter } from 'expo-router';
 
 // Note: You can create custom avatar components or use initials
 const AVATAR_COLORS = ['#1B5E20', '#0D47A1', '#4A148C', '#B71C1C', '#E65100'];
@@ -107,7 +106,6 @@ export default function ProfileScreen() {
   const { theme, isDark } = useTheme();
   const { signOut, profile, updateProfile } = useAuth();
   const { paddingTop } = useScreenInsets(); // Get safe area insets
-  const router = useRouter();
   
   const [user, setUser] = useState<UserData | null>(null);
   const [lineups, setLineups] = useState<Lineup[]>([]);
@@ -317,10 +315,6 @@ export default function ProfileScreen() {
     }
   };
   
-  const handleUpgrade = () => {
-    router.push('/subscription');
-  };
-
   const totalVotes = lineups.reduce((sum, l) => sum + (l.votes || 0), 0);
   const displayName = profile?.username || user?.name || 'Football Fan';
   const memberSince = user ? new Date(user.createdAt).toLocaleDateString('en-US', {
@@ -415,11 +409,6 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>App</ThemedText>
-          <SettingsItem 
-            icon="crown" 
-            label="Upgrade to Pro" 
-            onPress={handleUpgrade}
-          />
           <SettingsItem icon="info" label="About DraftMaster FC" />
           <SettingsItem icon="file-text" label="Terms of Service" />
           <SettingsItem icon="shield" label="Privacy Policy" />
