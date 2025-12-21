@@ -8,8 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { 
   useAnimatedStyle, 
@@ -23,11 +22,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
 import { Player } from '@/data/types';
 import { players } from '@/data/players';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'PlayerComparison'>;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -243,7 +239,7 @@ function getPlayerStats(player: Player): { [key: string]: number } {
 
 export default function PlayerComparisonScreen() {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   
   const [player1, setPlayer1] = useState<Player | null>(null);
@@ -279,7 +275,7 @@ export default function PlayerComparisonScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
+        <Pressable onPress={() => router.back()} hitSlop={12}>
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
         <ThemedText type="h3" style={{ flex: 1, textAlign: 'center' }}>Compare Players</ThemedText>

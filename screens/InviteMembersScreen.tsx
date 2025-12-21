@@ -1,18 +1,18 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Alert, Platform, ActivityIndicator, FlatList } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useScreenInsets } from '@/hooks/useScreenInsets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
-import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
+import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
+import { RootStackParamList } from '@/utils/types';
 
 type RouteParams = RouteProp<RootStackParamList, 'InviteMembers'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -192,7 +192,7 @@ export default function InviteMembersScreen() {
           <View style={styles.emptyContainer}>
             <Feather name="user-x" size={48} color={theme.textSecondary} />
             <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: 'center' }}>
-              No users found matching "{searchQuery}"
+              No users found matching {searchQuery}
             </ThemedText>
             <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
               Make sure you entered the correct username

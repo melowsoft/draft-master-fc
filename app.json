@@ -8,7 +8,7 @@
     "scheme": "draftmasterfc",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/splash-screen.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,6 +19,17 @@
       "bundleIdentifier": "com.draftmasterfc.app",
       "buildNumber": "1.0.0",
       "supportsTablet": true,
+      "icon": {
+        "light": "./assets/icons/ios/ios-light.png",
+        "dark": "./assets/icons/ios/ios-dark.png",
+        "tinted": "./assets/icons/ios/ios-tinted.png"
+      },
+      "splash": {
+        "image": "./assets/images/splash-screen.png",
+        "tabletImage": "./assets/images/splash-screen.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      },
       "infoPlist": {
         "CFBundleURLTypes": [
           {

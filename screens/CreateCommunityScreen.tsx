@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Switch, Alert, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
-import { createCommunity } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
+import { createCommunity } from '@/services/communityService';
+import { RootStackParamList } from '@/utils/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -144,10 +143,10 @@ export default function CreateCommunityScreen() {
             />
           </View>
 
-          <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary }]}>
-            <Feather name="info" size={16} color={theme.textSecondary} />
+            <View style={[styles.infoBox, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="info" size={16} color={theme.textSecondary} />
             <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-              You'll be the owner of this community and can invite other members to join.
+              You&apos;ll be the owner of this community and can invite other members to join.
             </ThemedText>
           </View>
 

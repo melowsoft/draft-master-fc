@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing, BorderRadius } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
+import { RootStackParamList } from '@/utils/types';
 import { createTopic } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
 

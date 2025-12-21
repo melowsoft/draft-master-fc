@@ -26,7 +26,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
+import { RootStackParamList } from '@/utils/types';
 import { Formation, FormationPosition, Position } from '@/data/types';
 import { addCustomFormation, updateCustomFormation, generateId } from '@/data/storage';
 

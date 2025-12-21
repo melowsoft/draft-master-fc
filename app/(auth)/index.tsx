@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -168,8 +169,8 @@ export default function AuthScreen() {
       >
         {/* App Logo/Icon Section */}
         <View style={styles.header}>
-          <View style={[styles.logoContainer, { backgroundColor: theme.primary }]}>
-            <Feather name="shield" size={48} color="#FFFFFF" />
+          <View style={[styles.logoContainer, { backgroundColor: "#ffffff" }]}>
+            <Image source={require('@/assets/images/icon.png')} style={styles.logoImage} resizeMode="contain" />
           </View>
           <ThemedText type="h1" style={styles.appName}>DraftMaster FC</ThemedText>
           <ThemedText type="body" style={[styles.tagline, { color: theme.textSecondary }]}>
@@ -431,7 +432,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
+    overflow: 'hidden',
     ...Shadows.card,
+  },
+  logoImage: {
+    width: 96,
+    height: 96,
   },
   appName: {
     textAlign: 'center',

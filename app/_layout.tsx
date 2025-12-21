@@ -1,12 +1,21 @@
-import { router, Stack } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth, AuthProvider } from '@/services/authContext';
+import { AuthProvider, useAuth } from '@/services/authContext';
+import { router, Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+void SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { theme } = useTheme();
   const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading) {
+      void SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
 
   // Handle initial auth state
   useEffect(() => {    

@@ -61,7 +61,7 @@ function NotificationBell() {
     >
       <Feather name="bell" size={22} color={theme.text} />
       {unreadCount > 0 ? (
-        <View style={[styles.badge, { backgroundColor: Colors.error }]}>
+        <View style={[styles.badge, { backgroundColor: theme.error }]}>
           <Text style={styles.badgeText}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </Text>

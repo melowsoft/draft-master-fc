@@ -1,36 +1,34 @@
-import React, { useRef, useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  Alert,
-  Dimensions,
-  Platform,
-  Share,
-} from 'react-native';
-import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import ViewShot from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
-  withSequence,
-  runOnJS,
+import * as Sharing from 'expo-sharing';
+import React, { useRef, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    Platform,
+    Pressable,
+    Share,
+    StyleSheet,
+    View,
+} from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring
 } from 'react-native-reanimated';
+import ViewShot from 'react-native-view-shot';
 
+import { Button } from '@/components/Button';
 import { ScreenScrollView } from '@/components/ScreenScrollView';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Button } from '@/components/Button';
-import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { deleteLineup } from '@/data/storage';
+import type { Lineup } from '@/data/types';
+import { useTheme } from '@/hooks/use-theme';
+import { RootStackParamList } from '@/utils/types';
 import ShareLineupModal from './ShareLineupModal';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'LineupDetail'>;
@@ -47,7 +45,7 @@ export default function LineupDetailScreen() {
   const route = useRoute<RouteProps>();
   const viewShotRef = useRef<ViewShot>(null);
   
-  const { lineup, isOwner } = route.params;
+  const { lineup, isOwner } = route.params as { lineup: Lineup; isOwner: boolean };
   const [votes, setVotes] = useState(lineup.votes || 0);
   const [hasVoted, setHasVoted] = useState(false);
   const [isExporting, setIsExporting] = useState(false);

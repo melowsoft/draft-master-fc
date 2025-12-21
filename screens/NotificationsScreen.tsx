@@ -1,23 +1,23 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { BorderRadius, Spacing } from '@/constants/theme';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useScreenInsets } from '@/hooks/useScreenInsets';
-import { Spacing, BorderRadius } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
-import { 
-  Notification, 
-  fetchNotifications, 
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-} from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
+import {
+    Notification,
+    deleteNotification,
+    fetchNotifications,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
+} from '@/services/communityService';
+import { RootStackParamList } from '@/utils/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -216,7 +216,7 @@ export default function NotificationsScreen() {
               No notifications
             </ThemedText>
             <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
-              When someone mentions you in a conversation, you'll see it here
+              When someone mentions you in a conversation, you&apos;ll see it here
             </ThemedText>
           </View>
         }

@@ -413,7 +413,7 @@ export default function DiscoverScreen() {
   };
 
   const handleComparePress = () => {
-    router.push('/player/comparison');
+    router.push('/player-comparison');
   };
 
   const handleChallengePress = (challenge: Challenge) => {

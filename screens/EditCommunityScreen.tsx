@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/navigation/types';
+import { RootStackParamList } from '@/utils/types';
 import { updateCommunity, fetchCommunityById } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
 

@@ -1,27 +1,27 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, Platform, ActivityIndicator, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList, CommunitiesStackParamList } from '@/navigation/types';
-import { isSupabaseConfigured } from '@/services/supabase';
-import { 
-  Community, 
-  fetchCommunities, 
-  fetchUserCommunities,
-  joinCommunity,
-  fetchPendingInvitations,
-  CommunityInvitation
-} from '@/services/communityService';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import {
+    Community,
+    CommunityInvitation,
+    fetchCommunities,
+    fetchPendingInvitations,
+    fetchUserCommunities,
+    joinCommunity
+} from '@/services/communityService';
+import { isSupabaseConfigured } from '@/services/supabase';
+import { CommunitiesStackParamList, RootStackParamList } from '@/utils/types';
 
 type NavigationProp = NativeStackNavigationProp<CommunitiesStackParamList>;
 type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

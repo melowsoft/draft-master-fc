@@ -10,9 +10,9 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/use-theme';
-import { useScreenInsets } from '@/hooks/useScreenInsets';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { RootStackParamList, MyLineupsStackParamList } from '@/navigation/types';
+import { RootStackParamList, MyLineupsStackParamList } from '@/utils/types';
 import { Lineup } from '@/data/types';
 import { loadLineups, deleteLineup } from '@/data/storage';
 
