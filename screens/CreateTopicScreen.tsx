@@ -1,27 +1,23 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
-import { createTopic } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
-
-type RouteParams = RouteProp<RootStackParamList, 'CreateTopic'>;
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { createTopic } from '@/services/communityService';
 
 export default function CreateTopicScreen() {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteParams>();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
-  const { communityId, communityName } = route.params;
+  const communityId = params.communityId as string;
+  const communityName = params.communityName as string;
 
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -45,7 +41,7 @@ export default function CreateTopicScreen() {
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        navigation.replace('TopicDetail', { topicId: result.topicId });
+        router.replace(`/topic-detail/${result.topicId}`);
       } else {
         Alert.alert('Error', result.error || 'Failed to create topic');
       }

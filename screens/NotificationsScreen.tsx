@@ -1,25 +1,21 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
-import { 
-  Notification, 
-  fetchNotifications, 
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-} from '@/services/communityService';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import {
+    Notification,
+    deleteNotification,
+    fetchNotifications,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
+} from '@/services/communityService';
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
@@ -104,7 +100,7 @@ function NotificationItem({
 export default function NotificationsScreen() {
   const { theme } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const navigation = useNavigation<NavigationProp>();
+  const router = useRouter();
   const { user } = useAuth();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -118,11 +114,9 @@ export default function NotificationsScreen() {
     setLoading(false);
   }, [user?.id]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadNotifications();
-    }, [loadNotifications])
-  );
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -141,7 +135,7 @@ export default function NotificationsScreen() {
     }
     
     if (notification.data.topicId) {
-      navigation.navigate('TopicDetail', { topicId: notification.data.topicId });
+      router.push(`/topic-detail/${notification.data.topicId}`);
     }
   };
 
@@ -171,7 +165,7 @@ export default function NotificationsScreen() {
       <View style={[styles.header, { paddingTop: paddingTop + Spacing.md }]}>
         <View style={styles.headerRow}>
           <Pressable 
-            onPress={() => navigation.goBack()}
+            onPress={() => router.back()}
             hitSlop={8}
             style={styles.backButton}
           >

@@ -1,22 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, Alert, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { Button } from '@/components/Button';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Button } from '@/components/Button';
-import { useTheme } from '@/hooks/use-theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { RootStackParamList, MyLineupsStackParamList } from '@/utils/types';
+import { BorderRadius, Colors, Shadows, Spacing } from '@/constants/theme';
+import { deleteLineup, loadLineups } from '@/data/storage';
 import { Lineup } from '@/data/types';
-import { loadLineups, deleteLineup } from '@/data/storage';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList & MyLineupsStackParamList>;
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { useTheme } from '@/hooks/use-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -181,7 +177,7 @@ function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
 export default function MyLineupsScreen() {
   const { theme } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const navigation = useNavigation<NavigationProp>();
+  const router = useRouter();
   const [lineups, setLineups] = useState<Lineup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -210,7 +206,7 @@ export default function MyLineupsScreen() {
   }, [fetchLineups]);
 
   const handleLineupPress = (lineup: Lineup) => {
-    navigation.navigate('LineupDetail', { lineup, isOwner: true });
+    router.push(`/lineup/${lineup.id}?isOwner=true`);
   };
 
   const handleDeleteLineup = async (id: string) => {
@@ -223,7 +219,7 @@ export default function MyLineupsScreen() {
   };
 
   const handleCreatePress = () => {
-    navigation.navigate('CreateLineup');
+    router.push('/create-lineup');
   };
 
   if (loading) {

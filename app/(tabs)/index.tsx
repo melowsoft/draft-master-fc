@@ -326,7 +326,7 @@ export default function DiscoverScreen() {
 
   const handleLineupPress = (lineup: Lineup) => {
     // Changed from navigation.navigate to router.push
-    router.push(`/lineup-detail/${lineup.id}?isOwner=false`);
+    router.push(`/lineup/${lineup.id}?isOwner=false`);
   };
 
   const handleComparePress = () => {

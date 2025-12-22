@@ -1,28 +1,23 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Switch, Alert, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
+import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
-import { updateCommunity, fetchCommunityById } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
-
-type RouteParams = RouteProp<RootStackParamList, 'EditCommunity'>;
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { fetchCommunityById, updateCommunity } from '@/services/communityService';
 
 export default function EditCommunityScreen() {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteParams>();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
-  const { communityId } = route.params;
+  const communityId = (params.id ?? params.communityId) as string;
 
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -59,7 +54,7 @@ export default function EditCommunityScreen() {
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        navigation.goBack();
+        router.back();
       } else {
         Alert.alert('Error', result.error || 'Failed to update community');
       }

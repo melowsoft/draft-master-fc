@@ -1,41 +1,34 @@
-import React, { useRef, useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import React, { useEffect, useRef, useState } from 'react';
+import {
   Alert,
   Dimensions,
   Platform,
+  Pressable,
   Share,
+  StyleSheet,
+  View,
 } from 'react-native';
-import { Image } from 'expo-image';
-import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import ViewShot from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
-import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
   withSequence,
-  runOnJS,
+  withSpring
 } from 'react-native-reanimated';
+import ViewShot from 'react-native-view-shot';
 
+import { Button } from '@/components/Button';
 import { ScreenScrollView } from '@/components/ScreenScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Button } from '@/components/Button';
-import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { deleteLineup } from '@/data/storage';
-import ShareLineupModal from './ShareLineupModal';
 import type { Lineup } from '@/data/types';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'LineupDetail'>;
-type RouteProps = RouteProp<RootStackParamList, 'LineupDetail'>;
+import { useTheme } from '@/hooks/use-theme';
+import ShareLineupModal from './ShareLineupModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 380;
@@ -44,12 +37,15 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function LineupDetailScreen() {
   const { theme, isDark } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProps>();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const viewShotRef = useRef<ViewShot>(null);
   
-  const { lineup, isOwner } = route.params as { lineup: Lineup; isOwner: boolean };
-  const [votes, setVotes] = useState(lineup.votes || 0);
+  const lineupParam = params.lineup as string | undefined;
+  const lineup = lineupParam ? (JSON.parse(lineupParam) as Lineup) : null;
+  const isOwner = params.isOwner === 'true';
+
+  const [votes, setVotes] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -58,8 +54,14 @@ export default function LineupDetailScreen() {
   const voteScale = useSharedValue(1);
   const pitchWidth = SCREEN_WIDTH - Spacing.xl * 2;
 
+  useEffect(() => {
+    if (lineup) {
+      setVotes(lineup.votes || 0);
+    }
+  }, [lineupParam]);
+
   const handleVote = (isUpvote: boolean) => {
-    if (hasVoted) return;
+    if (hasVoted || !lineup) return;
     
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -75,6 +77,7 @@ export default function LineupDetailScreen() {
   };
 
   const handleShare = async () => {
+    if (!lineup) return;
     if (Platform.OS === 'web') {
       Alert.alert(
         'Share Lineup',
@@ -111,6 +114,7 @@ export default function LineupDetailScreen() {
   };
 
   const handleShareToCommunity = async () => {
+    if (!lineup) return;
     if (Platform.OS === 'web') {
       Alert.alert(
         'Share to Community',
@@ -137,10 +141,12 @@ export default function LineupDetailScreen() {
   };
 
   const handleEdit = () => {
-    navigation.navigate('CreateLineup', { editLineup: lineup });
+    if (!lineup) return;
+    router.push({ pathname: '/create-lineup', params: { editLineup: JSON.stringify(lineup) } });
   };
 
   const handleDelete = () => {
+    if (!lineup) return;
     Alert.alert(
       'Delete Lineup',
       `Are you sure you want to delete "${lineup.name}"?`,
@@ -152,7 +158,7 @@ export default function LineupDetailScreen() {
           onPress: async () => {
             try {
               await deleteLineup(lineup.id);
-              navigation.goBack();
+              router.back();
             } catch (error) {
               Alert.alert('Error', 'Failed to delete lineup');
             }
@@ -165,6 +171,24 @@ export default function LineupDetailScreen() {
   const voteAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: voteScale.value }],
   }));
+
+  if (!lineup) {
+    return (
+      <ThemedView
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: Spacing.xl,
+        }}
+      >
+        <ThemedText type="body">Lineup not found</ThemedText>
+        <Button onPress={() => router.back()} style={{ marginTop: Spacing.lg }}>
+          Go Back
+        </Button>
+      </ThemedView>
+    );
+  }
 
   const playerCount = Object.keys(lineup.players || {}).length;
 
@@ -442,6 +466,15 @@ export default function LineupDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
   captureArea: {
     backgroundColor: 'transparent',
   },

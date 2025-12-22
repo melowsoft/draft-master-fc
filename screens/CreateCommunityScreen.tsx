@@ -1,24 +1,19 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Switch, Alert, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
-import { createCommunity } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { createCommunity } from '@/services/communityService';
 
 export default function CreateCommunityScreen() {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
+  const router = useRouter();
   const { user } = useAuth();
 
   const [name, setName] = useState('');
@@ -44,9 +39,8 @@ export default function CreateCommunityScreen() {
         if (Platform.OS !== 'web') {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        navigation.goBack();
         console.log('Navigating to community:', result.community);
-        navigation.navigate('CommunityDetail', { communityId: result.community.id });
+        router.replace(`/community-detail/${result.community.id}`);
       } else {
         Alert.alert('Error', result.error || 'Failed to create community');
       }

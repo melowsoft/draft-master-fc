@@ -1,37 +1,32 @@
-import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  ScrollView, 
-  TextInput,
-  Alert,
-  Dimensions,
-  Platform,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
-import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View,
+} from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { addCustomFormation, generateId, updateCustomFormation } from '@/data/storage';
 import { Formation, FormationPosition, Position } from '@/data/types';
-import { addCustomFormation, updateCustomFormation, generateId } from '@/data/storage';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CustomFormation'>;
-type RouteProps = RouteProp<RootStackParamList, 'CustomFormation'>;
+import { useTheme } from '@/hooks/use-theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 420;
@@ -137,11 +132,12 @@ function DraggablePositionMarker({
 
 export default function CustomFormationScreen() {
   const { theme, isDark } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProps>();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   
-  const editFormation = route.params?.editFormation;
+  const editFormation =
+    typeof params.editFormation === 'string' ? JSON.parse(params.editFormation) : params.editFormation;
   
   const [formationName, setFormationName] = useState(editFormation?.name || '');
   const [positions, setPositions] = useState<FormationPosition[]>(
@@ -228,7 +224,7 @@ export default function CustomFormationScreen() {
       } else {
         await addCustomFormation(formation);
       }
-      navigation.goBack();
+      router.back();
     } catch (error) {
       Alert.alert('Error', 'Failed to save formation');
     }
@@ -240,12 +236,12 @@ export default function CustomFormationScreen() {
         'Discard Changes?',
         'You have unsaved changes. Are you sure you want to discard them?',
         [
-          { text: 'Keep Editing', style: 'cancel' },
-          { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: () => router.back() },
         ]
       );
     } else {
-      navigation.goBack();
+      router.back();
     }
   };
 

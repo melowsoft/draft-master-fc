@@ -1,21 +1,16 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Alert, Platform, ActivityIndicator, FlatList } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { RootStackParamList } from '@/utils/types';
-import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-
-type RouteParams = RouteProp<RootStackParamList, 'InviteMembers'>;
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
 
 const AVATAR_COLORS = ['#E53935', '#1E88E5', '#FFB300', '#43A047', '#7B1FA2'];
 
@@ -28,17 +23,17 @@ interface SearchResult {
 export default function InviteMembersScreen() {
   const { theme } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteParams>();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
-  const { communityId, communityName } = route.params;
+  const communityId = params.communityId as string | undefined;
+  const communityName = (params.communityName as string | undefined) ?? 'this community';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -76,7 +71,7 @@ export default function InviteMembersScreen() {
   };
 
   const handleInvite = async (targetUser: SearchResult) => {
-    if (!user?.id) return;
+    if (!user?.id || !communityId) return;
 
     setInvitingUserId(targetUser.id);
     try {
@@ -159,7 +154,7 @@ export default function InviteMembersScreen() {
             autoCorrect={false}
           />
           {searchQuery.length > 0 ? (
-            <Pressable onPress={() => { setSearchQuery(''); setSearchResults([]); }}>
+            <Pressable onPress={() => { setSearchQuery(''); setSearchResults([]); setIsSearching(false); }}>
               <Feather name="x" size={18} color={theme.textSecondary} />
             </Pressable>
           ) : null}
