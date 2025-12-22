@@ -1,25 +1,25 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, Pressable, FlatList, RefreshControl, Platform, ActivityIndicator, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Spacing } from '@/constants/theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
-import {
-    Community,
-    CommunityInvitation,
-    fetchCommunities,
-    fetchPendingInvitations,
-    fetchUserCommunities,
-    joinCommunity
-} from '@/services/communityService';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { isSupabaseConfigured } from '@/services/supabase';
+import { 
+  Community, 
+  fetchCommunities, 
+  fetchUserCommunities,
+  joinCommunity,
+  fetchPendingInvitations,
+  CommunityInvitation
+} from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

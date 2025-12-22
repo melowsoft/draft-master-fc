@@ -1,45 +1,44 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  FlatList, 
-  RefreshControl, 
-  TextInput, 
-  KeyboardAvoidingView, 
-  Platform, 
-  ActivityIndicator, 
-  Alert, 
-  Text, 
-  Dimensions,
-  Animated,
-  Easing
-} from 'react-native';
-import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Colors, Shadows, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { 
-  Topic, 
-  TopicMessage, 
-  fetchTopicById, 
-  fetchTopicMessages, 
-  postMessage, 
-  deleteMessage,
-  searchCommunityMembers,
+import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/services/authContext';
+import {
+  Topic,
+  TopicMessage,
   createMentionNotifications,
+  deleteMessage,
   fetchCommunityById,
+  fetchTopicById,
+  fetchTopicMessages,
+  postMessage,
+  searchCommunityMembers,
   uploadChatImage,
 } from '@/services/communityService';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuth } from '@/services/authContext';
 
 type UserProfile = { id: string; username: string };
 
@@ -303,10 +302,11 @@ function ScrollToBottomButton({ onPress, unreadCount }: { onPress: () => void; u
 
 export default function TopicDetailScreen() {
   const { theme, isDark } = useTheme();
-  const { paddingTop, paddingBottom } = useScreenInsets();
+  const { paddingBottom, safeArea } = useScreenInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, profile } = useAuth();
+  const topHeaderInset = safeArea.top;
   
   const topicId = params.id as string;
   const flatListRef = useRef<FlatList>(null);
@@ -563,12 +563,25 @@ export default function TopicDetailScreen() {
       >
         <ThemedView style={styles.container}>
           {/* Community Header */}
-          <View style={[styles.communityHeader, { backgroundColor: theme.backgroundDefault }]}>
-            <View style={styles.communityInfo}>
-              <Feather name="users" size={16} color={theme.primary} />
-              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-                {communityName}
-              </ThemedText>
+          <View
+            style={[
+              styles.communityHeader,
+              {
+                backgroundColor: theme.backgroundDefault,
+                paddingTop: topHeaderInset + Spacing.sm,
+              },
+            ]}
+          >
+            <View style={styles.communityInfoRow}>
+              <Pressable onPress={() => router.back()} style={styles.backIconButton}>
+                <Feather name="arrow-left" size={22} color={theme.text} />
+              </Pressable>
+              <View style={styles.communityInfo}>
+                <Feather name="users" size={16} color={theme.primary} />
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                  {communityName}
+                </ThemedText>
+              </View>
             </View>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
@@ -821,7 +834,19 @@ const styles = StyleSheet.create({
   communityInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  communityInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: Spacing.xs,
+  },
+  backIconButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ export default function CommunityDetail() {
       <Stack.Screen
         options={{
           headerTitle: 'Topic Detail',
+          headerBackTitle: 'Back',
           headerTransparent: true,
           headerBlurEffect: isDark ? 'dark' : 'light',
           headerTintColor: theme.text,

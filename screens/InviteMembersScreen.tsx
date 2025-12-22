@@ -1,16 +1,16 @@
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, StyleSheet, Pressable, TextInput, Alert, Platform, ActivityIndicator, FlatList } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 const AVATAR_COLORS = ['#E53935', '#1E88E5', '#FFB300', '#43A047', '#7B1FA2'];
 

@@ -1,20 +1,20 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { Lineup, Challenge } from '@/data/types';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { formations } from '@/data/formations';
-import { isSupabaseConfigured } from '@/services/supabase';
-import { fetchPublicLineups, fetchTrendingLineups, fetchActiveChallenges, PublicLineup } from '@/services/communityService';
+import { Challenge, Lineup } from '@/data/types';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import { fetchActiveChallenges, fetchTrendingLineups, PublicLineup } from '@/services/communityService';
+import { isSupabaseConfigured } from '@/services/supabase';
 
 const sampleChallenges: Challenge[] = [
   {
@@ -279,7 +279,7 @@ function ComingSoonBanner({ isConnected }: { isConnected: boolean }) {
 export default function DiscoverScreen() {
   const { theme, isDark } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const router = useRouter(); // Changed from useNavigation
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -325,17 +325,14 @@ export default function DiscoverScreen() {
   }, [isConnected]);
 
   const handleLineupPress = (lineup: Lineup) => {
-    // Changed from navigation.navigate to router.push
     router.push(`/lineup/${lineup.id}?isOwner=false`);
   };
 
   const handleComparePress = () => {
-    // Changed from rootNavigation.navigate to router.push
     router.push('/player-comparison');
   };
 
   const handleChallengePress = (challenge: Challenge) => {
-    // Changed from rootNavigation.navigate to router.push
     router.push('/create-lineup');
   };
 

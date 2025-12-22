@@ -12,6 +12,7 @@ export default function EditCommunityRoute() {
       <Stack.Screen
         options={{
           headerTitle: 'Edit Community',
+          headerBackTitle: 'Back',
           headerTransparent: true,
           headerBlurEffect: isDark ? 'dark' : 'light',
           headerTintColor: theme.text,

@@ -1,18 +1,18 @@
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, Pressable, FlatList, RefreshControl, Alert, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
-import { Button } from '@/components/Button';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Colors, Shadows, Spacing } from '@/constants/theme';
-import { deleteLineup, loadLineups } from '@/data/storage';
-import { Lineup } from '@/data/types';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/use-theme';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
+import { Lineup } from '@/data/types';
+import { loadLineups, deleteLineup } from '@/data/storage';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

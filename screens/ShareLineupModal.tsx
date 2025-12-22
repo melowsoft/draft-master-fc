@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -41,6 +42,7 @@ type Step = 'community' | 'topic' | 'message';
 export default function ShareLineupModal({ visible, onClose, lineup, capturedImageUri }: ShareLineupModalProps) {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   
   const [step, setStep] = useState<Step>('community');
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -225,7 +227,7 @@ export default function ShareLineupModal({ visible, onClose, lineup, capturedIma
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           {step !== 'community' ? (
             <Pressable onPress={handleBack} style={styles.headerButton}>

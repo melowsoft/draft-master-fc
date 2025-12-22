@@ -1,35 +1,34 @@
-import React, { useRef, useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  Alert,
-  Dimensions,
-  Platform,
-  Share,
-} from 'react-native';
-import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router'; // CHANGED
-import ViewShot from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
-  withSequence,
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import React, { useRef, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    Platform,
+    Pressable,
+    Share,
+    StyleSheet,
+    View,
+} from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withSpring,
 } from 'react-native-reanimated';
+import ViewShot from 'react-native-view-shot';
 
+import { Button } from '@/components/Button';
 import { ScreenScrollView } from '@/components/ScreenScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Button } from '@/components/Button';
-import { useTheme } from '@/hooks/use-theme'; // CHANGED: useTheme not use-theme
-import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { deleteLineup, loadLineups } from '@/data/storage'; // ADDED loadLineups
-import ShareLineupModal from '../../screens/ShareLineupModal'; // Check this path
-import { Lineup } from '@/data/types'; // ADDED
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { deleteLineup, loadLineups } from '@/data/storage';
+import { Lineup } from '@/data/types';
+import { useTheme } from '@/hooks/use-theme';
+import ShareLineupModal from '@/screens/ShareLineupModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 380;
@@ -38,11 +37,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function LineupDetailScreen() {
   const { theme, isDark } = useTheme();
-  const router = useRouter(); // CHANGED: useRouter instead of useNavigation
-  const params = useLocalSearchParams(); // CHANGED: useLocalSearchParams instead of useRoute
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const viewShotRef = useRef<ViewShot>(null);
   
-  // Extract params - CHANGED
   const id = params.id as string;
   const isOwner = params.isOwner === 'true';
   
@@ -58,7 +56,6 @@ export default function LineupDetailScreen() {
   const voteScale = useSharedValue(1);
   const pitchWidth = SCREEN_WIDTH - Spacing.xl * 2;
 
-  // Load lineup data - ADDED
   React.useEffect(() => {
     const loadLineupData = async () => {
       try {
@@ -80,7 +77,7 @@ export default function LineupDetailScreen() {
     };
 
     loadLineupData();
-  }, [id]);
+  }, [id, router]);
 
   const handleVote = (isUpvote: boolean) => {
     if (hasVoted || !lineup) return;
@@ -183,7 +180,7 @@ export default function LineupDetailScreen() {
             try {
               await deleteLineup(lineup.id);
               router.back();
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to delete lineup');
             }
           }
@@ -198,27 +195,60 @@ export default function LineupDetailScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ThemedText>Loading lineup...</ThemedText>
-      </ThemedView>
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            headerTitle: 'Lineup',
+            headerBackTitle: 'Back',
+            headerTransparent: true,
+            headerBlurEffect: isDark ? 'dark' : 'light',
+            headerTintColor: theme.text,
+          }}
+        />
+        <ThemedView style={styles.loadingContainer}>
+          <ThemedText>Loading lineup...</ThemedText>
+        </ThemedView>
+      </>
     );
   }
 
   if (!lineup) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ThemedText>Lineup not found</ThemedText>
-        <Button onPress={() => router.back()}>
-          Go Back
-        </Button>
-      </ThemedView>
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            headerTitle: 'Lineup',
+            headerBackTitle: 'Back',
+            headerTransparent: true,
+            headerBlurEffect: isDark ? 'dark' : 'light',
+            headerTintColor: theme.text,
+          }}
+        />
+        <ThemedView style={styles.loadingContainer}>
+          <ThemedText>Lineup not found</ThemedText>
+          <Button onPress={() => router.back()}>Go Back</Button>
+        </ThemedView>
+      </>
     );
   }
 
   const playerCount = Object.keys(lineup.players || {}).length;
 
   return (
-    <ScreenScrollView>
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: lineup.name,
+          headerBackTitle: 'Back',
+          headerTransparent: true,
+          headerBlurEffect: isDark ? 'dark' : 'light',
+          headerTintColor: theme.text,
+        }}
+      />
+      <ScreenScrollView>
       <ViewShot 
         ref={viewShotRef} 
         options={{ format: 'png', quality: 1 }}
@@ -486,7 +516,8 @@ export default function LineupDetailScreen() {
         lineup={lineup}
         capturedImageUri={capturedImageUri}
       />
-    </ScreenScrollView>
+      </ScreenScrollView>
+    </>
   );
 }
 

@@ -1,26 +1,26 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Pressable, FlatList, RefreshControl, Platform, ActivityIndicator, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { isSupabaseConfigured } from '@/services/supabase';
-import { 
-  Community, 
-  fetchCommunities, 
-  fetchUserCommunities,
-  joinCommunity,
-  fetchPendingInvitations,
-  CommunityInvitation,
-  respondToInvitation
-} from '@/services/communityService';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import {
+    Community,
+    CommunityInvitation,
+    fetchCommunities,
+    fetchPendingInvitations,
+    fetchUserCommunities,
+    joinCommunity,
+    respondToInvitation
+} from '@/services/communityService';
+import { isSupabaseConfigured } from '@/services/supabase';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -194,7 +194,7 @@ function SectionHeader({ title, count }: { title: string; count?: number }) {
 export default function CommunitiesScreen() {
   const { theme } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const router = useRouter(); // Changed from useNavigation
+  const router = useRouter();
   const { user, isAuthenticated, session } = useAuth();
   const isGuest = isAuthenticated && !session;
   const [refreshing, setRefreshing] = useState(false);
@@ -234,12 +234,11 @@ export default function CommunitiesScreen() {
     loadData();
   }, []);
 
-  // Handle screen focus
- useFocusEffect(
-  useCallback(() => {
-    loadData();
-  }, [loadData])
-);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -249,7 +248,6 @@ export default function CommunitiesScreen() {
 
   const handleCommunityPress = (community: Community) => {
     if (community.isMember) {
-      // Changed from rootNavigation.navigate to router.push
       router.push(`/community/${community.id}`);
     }
   };
@@ -306,7 +304,6 @@ export default function CommunitiesScreen() {
       Alert.alert('Sign In Required', 'Please sign in to create a community.');
       return;
     }
-    // Changed from rootNavigation.navigate to router.push
     router.push('/create-community');
   };
 

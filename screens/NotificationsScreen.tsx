@@ -1,21 +1,21 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, Pressable, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Spacing } from '@/constants/theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
-import {
-    Notification,
-    deleteNotification,
-    fetchNotifications,
-    markAllNotificationsAsRead,
-    markNotificationAsRead,
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Spacing, BorderRadius } from '@/constants/theme';
+import { 
+  Notification, 
+  fetchNotifications, 
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
 } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);

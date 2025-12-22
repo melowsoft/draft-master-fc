@@ -1,9 +1,8 @@
-import CommunityDetailScreen from '@/screens/CommunityDetailScreen';
-import { useLocalSearchParams , Stack } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
+import CommunityDetailScreen from '@/screens/CommunityDetailScreen';
+import { Stack } from 'expo-router';
 
 export default function CommunityDetail() {
-  const { id } = useLocalSearchParams();
   const { theme, isDark } = useTheme();
 
   return (
@@ -11,6 +10,7 @@ export default function CommunityDetail() {
       <Stack.Screen
         options={{
           headerTitle: 'Community',
+          headerBackTitle: 'Back',
           headerTransparent: true,
           headerBlurEffect: isDark ? 'dark' : 'light',
           headerTintColor: theme.text,

@@ -1,32 +1,32 @@
-import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import {
-    Alert,
-    Dimensions,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    View,
+import React, { useState, useRef } from 'react';
+import { 
+  View, 
+  StyleSheet, 
+  Pressable, 
+  ScrollView, 
+  TextInput,
+  Alert,
+  Dimensions,
+  Platform,
 } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-} from 'react-native-reanimated';
+import { Feather } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
+import { GestureHandlerRootView, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
-import { addCustomFormation, generateId, updateCustomFormation } from '@/data/storage';
-import { Formation, FormationPosition, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
+import { Formation, FormationPosition, Position } from '@/data/types';
+import { addCustomFormation, updateCustomFormation, generateId } from '@/data/storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 420;

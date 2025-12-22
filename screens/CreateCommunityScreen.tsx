@@ -1,15 +1,15 @@
-import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { View, StyleSheet, Pressable, TextInput, Switch, Alert, Platform, ActivityIndicator } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
-import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { ThemedText } from '@/components/ThemedText';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { createCommunity } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 export default function CreateCommunityScreen() {
   const { theme } = useTheme();
