@@ -382,7 +382,7 @@ export default function AuthScreen() {
             <ThemedText 
               type="small" 
               style={[styles.footerLink, { color: theme.primary }]}
-              onPress={() => WebBrowser.openBrowserAsync('https://yourapp.com/terms')}
+              onPress={() => WebBrowser.openBrowserAsync('https://www.draftmasterfc.com/terms')}
             >
               Terms
             </ThemedText>
@@ -390,7 +390,7 @@ export default function AuthScreen() {
             <ThemedText 
               type="small" 
               style={[styles.footerLink, { color: theme.primary }]}
-              onPress={() => WebBrowser.openBrowserAsync('https://yourapp.com/privacy')}
+              onPress={() => WebBrowser.openBrowserAsync('https://www.draftmasterfc.com/privacy-policy')}
             >
               Privacy Policy
             </ThemedText>

@@ -1,23 +1,23 @@
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, Pressable, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Spacing } from '@/constants/theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
-import {
-    Notification,
-    deleteNotification,
-    fetchNotifications,
-    markAllNotificationsAsRead,
-    markNotificationAsRead,
-} from '@/services/communityService';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Spacing, BorderRadius } from '@/constants/theme';
 import { RootStackParamList } from '@/utils/types';
+import { 
+  Notification, 
+  fetchNotifications, 
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+} from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

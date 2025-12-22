@@ -1,17 +1,18 @@
+import React, { useState } from 'react';
+import { View, StyleSheet, Pressable, TextInput, Switch, Alert, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { ThemedText } from '@/components/ThemedText';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { ThemedView } from '@/components/ThemedView';
+import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
-import { createCommunity } from '@/services/communityService';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { RootStackParamList } from '@/utils/types';
+import { createCommunity } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

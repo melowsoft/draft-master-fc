@@ -1,18 +1,18 @@
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, StyleSheet, Pressable, TextInput, Alert, Platform, ActivityIndicator, FlatList } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/services/authContext';
-import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { Spacing, BorderRadius, Colors } from '@/constants/theme';
 import { RootStackParamList } from '@/utils/types';
+import { inviteUserToCommunity, searchUsersByUsername } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
 
 type RouteParams = RouteProp<RootStackParamList, 'InviteMembers'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

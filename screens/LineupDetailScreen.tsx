@@ -1,35 +1,38 @@
-import { Feather } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
-import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
-import {
-    Alert,
-    Dimensions,
-    Platform,
-    Pressable,
-    Share,
-    StyleSheet,
-    View,
+import { 
+  View, 
+  StyleSheet, 
+  Pressable, 
+  Alert,
+  Dimensions,
+  Platform,
+  Share,
 } from 'react-native';
-import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSequence,
-    withSpring
-} from 'react-native-reanimated';
+import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+import * as Haptics from 'expo-haptics';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring,
+  withSequence,
+  runOnJS,
+} from 'react-native-reanimated';
 
-import { Button } from '@/components/Button';
 import { ScreenScrollView } from '@/components/ScreenScrollView';
 import { ThemedText } from '@/components/ThemedText';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
-import { deleteLineup } from '@/data/storage';
-import type { Lineup } from '@/data/types';
+import { ThemedView } from '@/components/ThemedView';
+import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/use-theme';
+import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
 import { RootStackParamList } from '@/utils/types';
+import { deleteLineup } from '@/data/storage';
 import ShareLineupModal from './ShareLineupModal';
+import type { Lineup } from '@/data/types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'LineupDetail'>;
 type RouteProps = RouteProp<RootStackParamList, 'LineupDetail'>;

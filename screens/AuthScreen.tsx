@@ -1,21 +1,22 @@
-import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    View
+  View,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button } from '@/components/Button';
-import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { ThemedText } from '@/components/ThemedText';
+import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import { Colors, Spacing, BorderRadius } from '@/constants/theme';
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
