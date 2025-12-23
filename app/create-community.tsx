@@ -1,25 +1,25 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  TextInput, 
-  Switch, 
-  Alert, 
-  Platform, 
-  ActivityIndicator 
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Stack, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Switch,
+    TextInput,
+    View
+} from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { createCommunity } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
+import { createCommunity } from '@/services/communityService';
 
 export default function CreateCommunityScreen() {
   const { theme } = useTheme();
@@ -30,8 +30,19 @@ export default function CreateCommunityScreen() {
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const isValid = name.trim().length >= 3;
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleCreate = async () => {
     if (!user?.id || !isValid) return;
@@ -86,13 +97,20 @@ export default function CreateCommunityScreen() {
         }}
       />
       
-      <ScreenKeyboardAwareScrollView>
-        <View style={styles.content}>
-          <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
-            <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
-              <Feather name="users" size={40} color="#FFFFFF" />
+      <ScreenKeyboardAwareScrollView
+        bottomOffset={Spacing['4xl']}
+        extraKeyboardSpace={Spacing.buttonHeight + Spacing['4xl']}
+        keyboardShouldPersistTaps="always"
+        contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 100 : 0 }}
+      >
+        <View style={[styles.content, isKeyboardVisible ? styles.contentKeyboardVisible : null]}>
+          {!isKeyboardVisible ? (
+            <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
+              <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
+                <Feather name="users" size={40} color="#FFFFFF" />
+              </View>
             </View>
-          </View>
+          ) : null}
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
@@ -245,6 +263,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing['3xl'],
+  },
+  contentKeyboardVisible: {
+    paddingTop: 0,
   },
   iconPreview: {
     alignItems: 'center',
