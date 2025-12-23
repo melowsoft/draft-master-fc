@@ -4,6 +4,9 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FullscreenImageView } from '@/components/FullscreenImageView';
+import { GestureHandlerRootView, TapGestureHandler } from 'react-native-gesture-handler';
+
 import {
   ActivityIndicator,
   Alert,
@@ -114,12 +117,14 @@ function MessageBubble({
   message, 
   isOwn,
   onDelete,
-  showAvatar = true
+  showAvatar = true,
+   onImagePress
 }: { 
   message: TopicMessage; 
   isOwn: boolean;
   onDelete?: () => void;
-  showAvatar?: boolean;
+    showAvatar?: boolean;
+     onImagePress?: (imageUrl: string | undefined) => void; 
 }) {
   const { theme } = useTheme();
   const avatarColor = AVATAR_COLORS[message.authorAvatarColor % AVATAR_COLORS.length];
@@ -217,19 +222,30 @@ function MessageBubble({
             />
           ) : null}
 
-          {message.imageUrl ? (
-            <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: message.imageUrl }}
-                style={styles.messageImage}
-                contentFit="cover"
-                transition={300}
-              />
-              <View style={styles.imageOverlay}>
-                <Feather name="image" size={16} color="rgba(255,255,255,0.9)" />
-              </View>
-            </View>
-          ) : null}
+  {message.imageUrl && onImagePress ? (
+    <Pressable
+      onPress={() => {
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        onImagePress(message.imageUrl); // Now this works
+      }}
+      style={({ pressed }) => [
+        styles.imagePressable,
+        { opacity: pressed ? 0.9 : 1 }
+      ]}
+    >
+      <Image
+        source={{ uri: message.imageUrl }}
+        style={styles.messageImage}
+        contentFit="cover"
+      />
+      {/* Zoom indicator */}
+      <View style={styles.zoomIndicator}>
+        <Feather name="maximize-2" size={14} color="rgba(255,255,255,0.8)" />
+      </View>
+    </Pressable>
+  ) : null}
         </View>
 
         <View style={styles.messageFooter}>
@@ -312,6 +328,7 @@ export default function TopicDetailScreen() {
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [topic, setTopic] = useState<Topic | null>(null);
   const [messages, setMessages] = useState<TopicMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -545,7 +562,7 @@ export default function TopicDetailScreen() {
   }
 
   return (
-    <>
+     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack.Screen
         options={{
           headerTitle: topic.title,
@@ -607,12 +624,18 @@ export default function TopicDetailScreen() {
                 (new Date(item.createdAt).getTime() - new Date(previousMessage.createdAt).getTime()) > 5 * 60 * 1000; // 5 minutes
               
               return (
-                <MessageBubble 
-                  message={item} 
-                  isOwn={item.authorId === user?.id}
-                  onDelete={item.authorId === user?.id ? () => handleDeleteMessage(item.id) : undefined}
-                  showAvatar={showAvatar}
-                />
+                 <MessageBubble 
+    message={item} 
+    isOwn={item.authorId === user?.id}
+    onDelete={item.authorId === user?.id ? () => handleDeleteMessage(item.id) : undefined}
+    onImagePress={(imageUrl) => {
+      // Add haptic feedback
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setFullscreenImage(imageUrl);
+    }}
+  />
               );
             }}
             ListEmptyComponent={
@@ -810,7 +833,12 @@ export default function TopicDetailScreen() {
           )}
         </ThemedView>
       </KeyboardAvoidingView>
-    </>
+       <FullscreenImageView
+        visible={!!fullscreenImage}
+        imageUrl={fullscreenImage || ''}
+        onClose={() => setFullscreenImage(null)}
+      />
+    </GestureHandlerRootView>
   );
 }
 
@@ -913,6 +941,17 @@ const styles = StyleSheet.create({
     maxWidth: 200,
     borderRadius: BorderRadius.md,
   },
+  zoomIndicator: {
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
   imageOverlay: {
     position: 'absolute',
     top: Spacing.xs,
@@ -988,6 +1027,13 @@ const styles = StyleSheet.create({
   selectedImageInfo: {
     flex: 1,
     marginLeft: Spacing.md,
+  },
+   imagePressable: {
+    position: 'relative', // For positioning the zoom indicator
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+    borderRadius: BorderRadius.md, // Optional: rounded corners
+    overflow: 'hidden', // Keeps the image within rounded corners
   },
   removeImageButton: {
     width: 36,
