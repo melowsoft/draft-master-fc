@@ -1,34 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  Modal,
-  TextInput,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    TextInput,
+    View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { BorderRadius, Spacing } from '@/constants/theme';
+import { Lineup } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { Spacing, BorderRadius } from '@/constants/theme';
 import {
-  fetchUserCommunities,
-  fetchCommunityTopics,
-  postMessage,
-  uploadLineupImage,
-  Community,
-  Topic,
-  LineupSnapshot,
+    Community,
+    fetchCommunityTopics,
+    fetchUserCommunities,
+    LineupSnapshot,
+    postMessage,
+    Topic,
+    uploadLineupImage,
 } from '@/services/communityService';
-import { Lineup } from '@/data/types';
 
 interface ShareLineupModalProps {
   visible: boolean;
@@ -149,7 +149,8 @@ export default function ShareLineupModal({ visible, onClose, lineup, capturedIma
         selectedTopic.id,
         user.id,
         shareMessage,
-        lineupSnapshot
+        lineupSnapshot,
+        imageUrl
       );
 
       if (result.success) {

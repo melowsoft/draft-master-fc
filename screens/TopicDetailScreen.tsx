@@ -1,11 +1,11 @@
+import { FullscreenImageView } from '@/components/FullscreenImageView';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FullscreenImageView } from '@/components/FullscreenImageView';
-import { GestureHandlerRootView, TapGestureHandler } from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import {
   ActivityIndicator,
@@ -124,11 +124,12 @@ function MessageBubble({
   isOwn: boolean;
   onDelete?: () => void;
     showAvatar?: boolean;
-     onImagePress?: (imageUrl: string | undefined) => void; 
+     onImagePress?: (imageUrl: string) => void; 
 }) {
   const { theme } = useTheme();
   const avatarColor = AVATAR_COLORS[message.authorAvatarColor % AVATAR_COLORS.length];
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const imageUrlToShow = message.imageUrl || message.lineup?.imageUrl;
 
   const handleLongPress = () => {
     if (isOwn && onDelete) {
@@ -222,13 +223,50 @@ function MessageBubble({
             />
           ) : null}
 
-  {message.imageUrl && onImagePress ? (
+          {message.lineup ? (
+            <View
+              style={[
+                styles.lineupSnapshotCard,
+                {
+                  backgroundColor: isOwn ? 'rgba(255,255,255,0.12)' : theme.backgroundSecondary,
+                  borderColor: isOwn ? 'rgba(255,255,255,0.18)' : theme.border,
+                },
+              ]}
+            >
+              <View style={styles.lineupSnapshotHeader}>
+                <View
+                  style={[
+                    styles.lineupSnapshotBadge,
+                    { backgroundColor: isOwn ? 'rgba(255,255,255,0.16)' : theme.primary + '20' },
+                  ]}
+                >
+                  <Feather name="layout" size={14} color={isOwn ? '#FFFFFF' : theme.primary} />
+                </View>
+                <Text
+                  style={[styles.lineupSnapshotTitle, { color: isOwn ? '#FFFFFF' : theme.text }]}
+                  numberOfLines={1}
+                >
+                  {message.lineup.name}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.lineupSnapshotMeta,
+                  { color: isOwn ? 'rgba(255,255,255,0.8)' : theme.textSecondary },
+                ]}
+              >
+                {message.lineup.formationName} • {message.lineup.playerCount} players
+              </Text>
+            </View>
+          ) : null}
+
+  {imageUrlToShow && onImagePress ? (
     <Pressable
       onPress={() => {
         if (Platform.OS !== 'web') {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
-        onImagePress(message.imageUrl); // Now this works
+        onImagePress(imageUrlToShow);
       }}
       style={({ pressed }) => [
         styles.imagePressable,
@@ -236,7 +274,7 @@ function MessageBubble({
       ]}
     >
       <Image
-        source={{ uri: message.imageUrl }}
+        source={{ uri: imageUrlToShow }}
         style={styles.messageImage}
         contentFit="cover"
       />
@@ -919,6 +957,34 @@ const styles = StyleSheet.create({
   },
   messageContent: {
     marginBottom: Spacing.xs,
+  },
+  lineupSnapshotCard: {
+    marginTop: Spacing.sm,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  lineupSnapshotHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  lineupSnapshotBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lineupSnapshotTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  lineupSnapshotMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '500',
   },
   messageFooter: {
     flexDirection: 'row',
