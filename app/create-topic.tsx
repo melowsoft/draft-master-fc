@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  TextInput, 
-  Alert, 
-  Platform, 
-  ActivityIndicator 
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    Platform,
+    Pressable,
+    StyleSheet,
+    TextInput,
+    View
+} from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
 import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius } from '@/constants/theme';
-import { createTopic } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
+import { createTopic } from '@/services/communityService';
 
 export default function CreateTopicScreen() {
   const { theme } = useTheme();
@@ -32,8 +33,19 @@ export default function CreateTopicScreen() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const canSubmit = title.trim().length >= 3 && message.trim().length >= 1;
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (!canSubmit || !user?.id) return;
@@ -70,16 +82,22 @@ export default function CreateTopicScreen() {
   return (
     <>
       {/* Optional: Custom header for this screen */}
-      <ScreenKeyboardAwareScrollView>
-        <View style={styles.content}>
-          <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
-            <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
-              <Feather name="message-circle" size={40} color="#FFFFFF" />
+      <ScreenKeyboardAwareScrollView
+        bottomOffset={Spacing['2xl']}
+        extraKeyboardSpace={Spacing.buttonHeight + Spacing['4xl']}
+        keyboardShouldPersistTaps="always"
+      >
+        <View style={[styles.content, isKeyboardVisible ? styles.contentKeyboardVisible : null]}>
+          {!isKeyboardVisible ? (
+            <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
+              <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
+                <Feather name="message-circle" size={40} color="#FFFFFF" />
+              </View>
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+                New conversation in {communityName}
+              </ThemedText>
             </View>
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
-              New conversation in {communityName}
-            </ThemedText>
-          </View>
+          ) : null}
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
@@ -206,6 +224,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing['3xl'],
+  },
+  contentKeyboardVisible: {
+    paddingTop: 0,
   },
   iconPreview: {
     alignItems: 'center',
