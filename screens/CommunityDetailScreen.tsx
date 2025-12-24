@@ -1,37 +1,35 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  FlatList, 
-  RefreshControl, 
-  Platform, 
-  ActivityIndicator, 
-  Alert,
-  Animated,
-  Dimensions
-} from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Platform,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    View
+} from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Colors, Shadows, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors, Shadows } from '@/constants/theme';
-import { 
-  Community,
-  CommunityMember,
-  fetchCommunityById,
-  fetchCommunityMembers,
-  leaveCommunity,
-  updateMemberRole,
-  deleteCommunity,
-  updateCommunity
-} from '@/services/communityService';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import {
+    Community,
+    CommunityMember,
+    deleteCommunity,
+    fetchCommunityById,
+    fetchCommunityMembers,
+    leaveCommunity,
+    updateMemberRole
+} from '@/services/communityService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_COLORS = ['#E53935', '#1E88E5', '#FFB300', '#43A047', '#7B1FA2'];
@@ -89,7 +87,7 @@ function MemberCard({
           backgroundColor: Colors.light.accent,
           borderColor: Colors.light.accent 
         }]}>
-          <Feather name="crown" size={10} color="#FFFFFF" />
+          <Feather name="award" size={10} color="#FFFFFF" />
           <ThemedText type="small" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '700' }}>
             Owner
           </ThemedText>
@@ -404,7 +402,7 @@ export default function CommunityDetailScreen() {
           Community Not Found
         </ThemedText>
         <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
-          This community may have been deleted or you don't have access
+          This community may have been deleted or you don&apos;t have access
         </ThemedText>
         <Pressable
           onPress={() => router.back()}
@@ -795,6 +793,9 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    marginBottom: Spacing.sm,
   },
   sectionTitleRow: {
     flexDirection: 'row',

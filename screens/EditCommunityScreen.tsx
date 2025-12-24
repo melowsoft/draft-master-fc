@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Switch, Alert, Platform, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Keyboard, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
+import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ScreenKeyboardAwareScrollView } from '@/components/ScreenKeyboardAwareScrollView';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { updateCommunity, fetchCommunityById } from '@/services/communityService';
 import { useAuth } from '@/services/authContext';
+import { fetchCommunityById, updateCommunity } from '@/services/communityService';
 
 export default function EditCommunityScreen() {
   const { theme } = useTheme();
@@ -23,6 +23,17 @@ export default function EditCommunityScreen() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   React.useEffect(() => {
     const loadCommunity = async () => {
@@ -58,7 +69,7 @@ export default function EditCommunityScreen() {
       } else {
         Alert.alert('Error', result.error || 'Failed to update community');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to update community');
     } finally {
       setIsSaving(false);
@@ -74,13 +85,20 @@ export default function EditCommunityScreen() {
   }
 
   return (
-    <ScreenKeyboardAwareScrollView>
-      <View style={styles.content}>
-        <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
-          <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
-            <Feather name="edit-2" size={40} color="#FFFFFF" />
+    <ScreenKeyboardAwareScrollView
+      bottomOffset={Spacing['4xl']}
+      extraKeyboardSpace={Spacing.buttonHeight + Spacing['4xl']}
+      keyboardShouldPersistTaps="always"
+      contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 100 : 0 }}
+    >
+      <View style={[styles.content, isKeyboardVisible ? styles.contentKeyboardVisible : null]}>
+        {!isKeyboardVisible ? (
+          <View style={[styles.iconPreview, { backgroundColor: theme.primary + '20' }]}>
+            <View style={[styles.largeIcon, { backgroundColor: theme.primary }]}>
+              <Feather name="edit-2" size={40} color="#FFFFFF" />
+            </View>
           </View>
-        </View>
+        ) : null}
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
@@ -185,6 +203,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
+  },
+  contentKeyboardVisible: {
+    paddingTop: 0,
   },
   iconPreview: {
     alignItems: 'center',
