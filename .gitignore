@@ -32,6 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +46,16 @@ app-example
 # generated native folders
 /ios
 /android
+
+coverage/
+.nyc_output/
+*.log
+pnpm-debug.log*
+.eslintcache
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.expo-shared/
+build/
