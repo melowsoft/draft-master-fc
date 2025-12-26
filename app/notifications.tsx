@@ -49,7 +49,12 @@ function NotificationItem({
   onDelete: () => void;
 }) {
   const { theme } = useTheme();
-  const iconName = notification.type === 'vote_received' ? 'thumbs-up' : 'at-sign';
+  const iconName =
+    notification.type === 'vote_received'
+      ? 'thumbs-up'
+      : notification.type === 'challenge_winner'
+        ? 'award'
+        : 'at-sign';
   
   return (
     <Pressable
@@ -145,6 +150,11 @@ export default function NotificationsScreen() {
     
     if (notification.data.topicId) {
       router.push(`/topic-detail/${notification.data.topicId}`);
+      return;
+    }
+
+    if (notification.data.challengeId) {
+      router.push(`/challenge-winner/${notification.data.challengeId}`);
       return;
     }
 

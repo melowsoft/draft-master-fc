@@ -8,6 +8,7 @@ export interface Database {
           avatar_url: string | null;
           avatar_color: number;
           favorite_formation: string;
+          winnings_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -17,6 +18,7 @@ export interface Database {
           avatar_url?: string | null;
           avatar_color?: number;
           favorite_formation?: string;
+          winnings_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -26,6 +28,7 @@ export interface Database {
           avatar_url?: string | null;
           avatar_color?: number;
           favorite_formation?: string;
+          winnings_count?: number;
           updated_at?: string;
         };
       };
@@ -92,6 +95,12 @@ export interface Database {
           end_date: string;
           is_active: boolean;
           is_featured: boolean;
+          winner_lineup_id: string | null;
+          winner_user_id: string | null;
+          winner_votes_count: number | null;
+          winner_resolved_at: string | null;
+          winner_awarded_at: string | null;
+          winner_notified_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -103,6 +112,12 @@ export interface Database {
           end_date: string;
           is_active?: boolean;
           is_featured?: boolean;
+          winner_lineup_id?: string | null;
+          winner_user_id?: string | null;
+          winner_votes_count?: number | null;
+          winner_resolved_at?: string | null;
+          winner_awarded_at?: string | null;
+          winner_notified_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -113,6 +128,12 @@ export interface Database {
           end_date?: string;
           is_active?: boolean;
           is_featured?: boolean;
+          winner_lineup_id?: string | null;
+          winner_user_id?: string | null;
+          winner_votes_count?: number | null;
+          winner_resolved_at?: string | null;
+          winner_awarded_at?: string | null;
+          winner_notified_at?: string | null;
         };
       };
       challenge_entries: {

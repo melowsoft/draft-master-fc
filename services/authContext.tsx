@@ -17,6 +17,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar_url: null,
           avatar_color: storedUser.avatarColor,
           favorite_formation: '4-3-3',
+          winnings_count: 0,
           created_at: storedUser.createdAt,
           updated_at: storedUser.createdAt,
         });
@@ -131,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar_url: null,
         avatar_color: Math.floor(Math.random() * 3),
         favorite_formation: '4-3-3',
+        winnings_count: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -142,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatar_url: null,
       avatar_color: Math.floor(Math.random() * 3),
       favorite_formation: '4-3-3',
+      winnings_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -246,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar_url: null,
         avatar_color: avatarColor,
         favorite_formation: '4-3-3',
+        winnings_count: 0,
         created_at: createdAt,
         updated_at: createdAt,
       });
@@ -327,6 +332,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }
 
+  async function refreshProfile(): Promise<void> {
+    if (user?.id) {
+      await fetchProfile(user.id);
+    }
+  }
+
   async function loadAnonymousUser(): Promise<AnonymousUser | null> {
     try {
       const data = await AsyncStorage.getItem(ANONYMOUS_USER_KEY);
@@ -348,6 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     signOut,
     updateProfile,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

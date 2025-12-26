@@ -9,7 +9,7 @@ import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { ChallengeVotingEntry, EnteredChallenge, fetchChallengeVotingEntries, fetchUserEnteredChallenges } from '@/services/communityService';
+import { ChallengeVotingEntry, EnteredChallenge, fetchChallengeVotingEntries, fetchUserEnteredChallenges, resolveDueChallengeWinners } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 function formatShortDate(dateString: string) {
@@ -37,6 +37,10 @@ function ChallengeRow({
   const votes = item.votesCount ?? 0;
 
   const handlePress = () => {
+    if (isEnded) {
+      router.push(`/challenge-winner/${item.id}`);
+      return;
+    }
     const query = [
       'mode=challengeVote',
       'isOwner=true',
@@ -248,6 +252,7 @@ export default function ChallengesScreen() {
     }
 
     setLoading(true);
+    await resolveDueChallengeWinners();
     if (activeTab === 'my') {
       await loadMyChallenges();
     } else {

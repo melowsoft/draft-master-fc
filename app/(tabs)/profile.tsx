@@ -451,7 +451,7 @@ export default function ProfileScreen() {
         <View style={styles.statsRow}>
           <StatCard icon="clipboard" value={lineups.length} label="Lineups" />
           <StatCard icon="arrow-up" value={totalVotes} label="Votes" />
-          <StatCard icon="award" value={0} label="Wins" />
+          <StatCard icon="award" value={profile?.winnings_count || 0} label="Wins" />
         </View>
 
         {/* Sections */}

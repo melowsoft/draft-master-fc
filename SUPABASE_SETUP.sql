@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   avatar_color INTEGER DEFAULT 0,
   favorite_formation TEXT DEFAULT '4-3-3',
+  winnings_count INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -47,6 +48,13 @@ CREATE TABLE IF NOT EXISTS public.challenges (
   start_date TIMESTAMP WITH TIME ZONE NOT NULL,
   end_date TIMESTAMP WITH TIME ZONE NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
+  is_featured BOOLEAN DEFAULT FALSE,
+  winner_lineup_id TEXT REFERENCES public.lineups(id) ON DELETE SET NULL,
+  winner_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  winner_votes_count INTEGER,
+  winner_resolved_at TIMESTAMP WITH TIME ZONE,
+  winner_awarded_at TIMESTAMP WITH TIME ZONE,
+  winner_notified_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -133,7 +141,7 @@ CREATE POLICY "Users can remove own votes" ON public.votes
 -- Challenges policies
 DROP POLICY IF EXISTS "Anyone can view active challenges" ON public.challenges;
 CREATE POLICY "Anyone can view active challenges" ON public.challenges
-  FOR SELECT USING (is_active = true);
+  FOR SELECT USING (true);
 
 -- Challenge entries policies
 DROP POLICY IF EXISTS "Anyone can view challenge entries" ON public.challenge_entries;
@@ -585,6 +593,76 @@ CREATE POLICY "Users can delete own notifications" ON public.notifications
 DROP POLICY IF EXISTS "Authenticated users can create notifications" ON public.notifications;
 CREATE POLICY "Authenticated users can create notifications" ON public.notifications
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE OR REPLACE FUNCTION resolve_due_challenge_winners()
+RETURNS INTEGER AS $$
+DECLARE
+  v_challenge RECORD;
+  v_winner RECORD;
+  v_resolved_count INTEGER := 0;
+BEGIN
+  LOOP
+    SELECT *
+    INTO v_challenge
+    FROM public.challenges
+    WHERE is_active = true
+      AND end_date <= NOW()
+      AND winner_resolved_at IS NULL
+    ORDER BY end_date ASC
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED;
+
+    EXIT WHEN NOT FOUND;
+
+    SELECT
+      ce.lineup_id,
+      ce.user_id,
+      l.votes_count,
+      ce.created_at
+    INTO v_winner
+    FROM public.challenge_entries ce
+    JOIN public.lineups l ON l.id = ce.lineup_id
+    WHERE ce.challenge_id = v_challenge.id
+    ORDER BY l.votes_count DESC, ce.created_at ASC, ce.lineup_id ASC
+    LIMIT 1;
+
+    UPDATE public.challenges
+    SET
+      is_active = false,
+      winner_lineup_id = COALESCE(v_winner.lineup_id, NULL),
+      winner_user_id = COALESCE(v_winner.user_id, NULL),
+      winner_votes_count = COALESCE(v_winner.votes_count, NULL),
+      winner_resolved_at = NOW(),
+      winner_awarded_at = CASE WHEN v_winner.user_id IS NOT NULL THEN NOW() ELSE NULL END,
+      winner_notified_at = CASE WHEN v_winner.user_id IS NOT NULL THEN NOW() ELSE NULL END
+    WHERE id = v_challenge.id;
+
+    IF v_winner.user_id IS NOT NULL THEN
+      UPDATE public.profiles
+      SET winnings_count = COALESCE(winnings_count, 0) + 1,
+          updated_at = NOW()
+      WHERE id = v_winner.user_id;
+
+      INSERT INTO public.notifications (user_id, type, title, body, data)
+      VALUES (
+        v_winner.user_id,
+        'challenge_winner',
+        'You won a challenge!',
+        'Tap to view your winning entry.',
+        jsonb_build_object(
+          'challengeId', v_challenge.id,
+          'challengeTitle', v_challenge.title,
+          'lineupId', v_winner.lineup_id
+        )
+      );
+    END IF;
+
+    v_resolved_count := v_resolved_count + 1;
+  END LOOP;
+
+  RETURN v_resolved_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Function to create mention notifications
 CREATE OR REPLACE FUNCTION create_mention_notification(

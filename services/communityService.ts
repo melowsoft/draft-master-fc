@@ -87,6 +87,322 @@ export interface ChallengeVotingEntry {
   lineup: PublicLineup;
 }
 
+export interface ChallengeWinner {
+  challengeId: string;
+  challengeTitle: string;
+  challengeTheme: string;
+  challengeEndDate: string;
+  winnerLineupId: string | null;
+  winnerUserId: string | null;
+  winnerUsername: string | null;
+  winnerAvatarColor: number | null;
+  winnerVotesCount: number | null;
+  winnerResolvedAt: string | null;
+  lineup: PublicLineup | null;
+  isLegacy?: boolean;
+}
+
+export async function resolveDueChallengeWinners(): Promise<{ success: boolean; resolvedCount: number; error?: string }> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { success: false, resolvedCount: 0, error: 'Backend not configured' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('resolve_due_challenge_winners');
+    if (error) {
+      return { success: false, resolvedCount: 0, error: error.message };
+    }
+    const resolvedCount = typeof data === 'number' ? data : 0;
+    return { success: true, resolvedCount };
+  } catch (e: any) {
+    return { success: false, resolvedCount: 0, error: e?.message || 'Failed to resolve winners' };
+  }
+}
+
+async function fetchChallengeWinnerLegacy(challengeId: string): Promise<ChallengeWinner | null> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return null;
+  }
+
+  const { data: challenge, error: challengeError } = await supabase
+    .from('challenges')
+    .select('id,title,theme,end_date')
+    .eq('id', challengeId)
+    .maybeSingle();
+
+  if (challengeError || !challenge) {
+    if (challengeError) {
+      console.warn('Error fetching legacy challenge row:', challengeError);
+    }
+    return null;
+  }
+
+  const endDate = (challenge as any).end_date as string;
+  const isEnded = !!endDate && new Date(endDate).getTime() <= Date.now();
+
+  if (!isEnded) {
+    return {
+      challengeId: (challenge as any).id as string,
+      challengeTitle: (challenge as any).title as string,
+      challengeTheme: (challenge as any).theme as string,
+      challengeEndDate: endDate,
+      winnerLineupId: null,
+      winnerUserId: null,
+      winnerUsername: null,
+      winnerAvatarColor: null,
+      winnerVotesCount: null,
+      winnerResolvedAt: null,
+      lineup: null,
+      isLegacy: true,
+    };
+  }
+
+  const { data: entryRows, error: entriesError } = await supabase
+    .from('challenge_entries')
+    .select('lineup_id,user_id,created_at')
+    .eq('challenge_id', challengeId);
+
+  if (entriesError) {
+    console.warn('Error fetching legacy challenge entries:', entriesError);
+    return {
+      challengeId: (challenge as any).id as string,
+      challengeTitle: (challenge as any).title as string,
+      challengeTheme: (challenge as any).theme as string,
+      challengeEndDate: endDate,
+      winnerLineupId: null,
+      winnerUserId: null,
+      winnerUsername: null,
+      winnerAvatarColor: null,
+      winnerVotesCount: null,
+      winnerResolvedAt: null,
+      lineup: null,
+      isLegacy: true,
+    };
+  }
+
+  const entries = (entryRows || [])
+    .map((r: any) => ({
+      lineupId: r.lineup_id as string | null | undefined,
+      userId: r.user_id as string | null | undefined,
+      createdAt: r.created_at as string | null | undefined,
+    }))
+    .filter((e) => !!e.lineupId) as { lineupId: string; userId?: string | null; createdAt?: string | null }[];
+
+  if (entries.length === 0) {
+    return {
+      challengeId: (challenge as any).id as string,
+      challengeTitle: (challenge as any).title as string,
+      challengeTheme: (challenge as any).theme as string,
+      challengeEndDate: endDate,
+      winnerLineupId: null,
+      winnerUserId: null,
+      winnerUsername: null,
+      winnerAvatarColor: null,
+      winnerVotesCount: null,
+      winnerResolvedAt: null,
+      lineup: null,
+      isLegacy: true,
+    };
+  }
+
+  const lineupIds = [...new Set(entries.map((e) => e.lineupId))];
+  const { data: lineupRows, error: lineupsError } = await supabase
+    .from('lineups')
+    .select('*')
+    .in('id', lineupIds);
+
+  if (lineupsError || !lineupRows) {
+    if (lineupsError) {
+      console.warn('Error fetching legacy winner lineups:', lineupsError);
+    }
+    return {
+      challengeId: (challenge as any).id as string,
+      challengeTitle: (challenge as any).title as string,
+      challengeTheme: (challenge as any).theme as string,
+      challengeEndDate: endDate,
+      winnerLineupId: null,
+      winnerUserId: null,
+      winnerUsername: null,
+      winnerAvatarColor: null,
+      winnerVotesCount: null,
+      winnerResolvedAt: null,
+      lineup: null,
+      isLegacy: true,
+    };
+  }
+
+  const lineupMap = new Map<string, any>();
+  (lineupRows || []).forEach((row: any) => {
+    if (row?.id) lineupMap.set(row.id as string, row);
+  });
+
+  const entryMap = new Map<string, { userId?: string | null; createdAt?: string | null }>();
+  entries.forEach((e) => entryMap.set(e.lineupId, { userId: e.userId, createdAt: e.createdAt }));
+
+  const ranked = lineupIds
+    .map((lineupId) => {
+      const lineupRow = lineupMap.get(lineupId);
+      if (!lineupRow) return null;
+      const entry = entryMap.get(lineupId);
+      return {
+        lineupId,
+        lineupRow,
+        votes: typeof lineupRow.votes_count === 'number' ? (lineupRow.votes_count as number) : 0,
+        entryCreatedAt: entry?.createdAt || null,
+        entryUserId: entry?.userId || null,
+      };
+    })
+    .filter(Boolean) as {
+    lineupId: string;
+    lineupRow: any;
+    votes: number;
+    entryCreatedAt: string | null;
+    entryUserId: string | null;
+  }[];
+
+  if (ranked.length === 0) {
+    return {
+      challengeId: (challenge as any).id as string,
+      challengeTitle: (challenge as any).title as string,
+      challengeTheme: (challenge as any).theme as string,
+      challengeEndDate: endDate,
+      winnerLineupId: null,
+      winnerUserId: null,
+      winnerUsername: null,
+      winnerAvatarColor: null,
+      winnerVotesCount: null,
+      winnerResolvedAt: null,
+      lineup: null,
+      isLegacy: true,
+    };
+  }
+
+  ranked.sort((a, b) => {
+    if (b.votes !== a.votes) return b.votes - a.votes;
+    const aTime = a.entryCreatedAt ? new Date(a.entryCreatedAt).getTime() : Number.MAX_SAFE_INTEGER;
+    const bTime = b.entryCreatedAt ? new Date(b.entryCreatedAt).getTime() : Number.MAX_SAFE_INTEGER;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.lineupId.localeCompare(b.lineupId);
+  });
+
+  const winner = ranked[0];
+  const winnerLineupId = winner.lineupId;
+  const winnerUserId = (winner.entryUserId || winner.lineupRow.user_id || null) as string | null;
+
+  let winnerProfile: Profile | null = null;
+  if (winnerUserId) {
+    const { data: profileRow, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,username,avatar_color')
+      .eq('id', winnerUserId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.warn('Error fetching legacy winner profile:', profileError);
+    } else {
+      winnerProfile = (profileRow as any) || null;
+    }
+  }
+
+  const lineupWithProfile = { ...(winner.lineupRow as any), profiles: winnerProfile || undefined } as LineupRow & {
+    profiles?: Profile;
+  };
+
+  return {
+    challengeId: (challenge as any).id as string,
+    challengeTitle: (challenge as any).title as string,
+    challengeTheme: (challenge as any).theme as string,
+    challengeEndDate: endDate,
+    winnerLineupId,
+    winnerUserId,
+    winnerUsername: winnerProfile?.username ?? null,
+    winnerAvatarColor: typeof winnerProfile?.avatar_color === 'number' ? winnerProfile.avatar_color : null,
+    winnerVotesCount: winner.votes,
+    winnerResolvedAt: null,
+    lineup: lineupRowToPublicLineup(lineupWithProfile),
+    isLegacy: true,
+  };
+}
+
+export async function fetchChallengeWinner(challengeId: string): Promise<ChallengeWinner | null> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return null;
+  }
+
+  if (!challengeId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(challengeId)) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('challenges')
+    .select('id,title,theme,end_date,winner_lineup_id,winner_user_id,winner_votes_count,winner_resolved_at')
+    .eq('id', challengeId)
+    .maybeSingle();
+
+  if (error) {
+    if ((error as any)?.code === '42703') {
+      return fetchChallengeWinnerLegacy(challengeId);
+    }
+    console.warn('Error fetching challenge winner:', error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const winnerLineupId = ((data as any).winner_lineup_id as string | null) ?? null;
+  const winnerUserId = ((data as any).winner_user_id as string | null) ?? null;
+
+  let winnerProfile: Profile | null = null;
+  if (winnerUserId) {
+    const { data: profileRow, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,username,avatar_color')
+      .eq('id', winnerUserId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Error fetching winner profile:', profileError);
+    } else {
+      winnerProfile = (profileRow as any) || null;
+    }
+  }
+
+  let lineup: PublicLineup | null = null;
+  if (winnerLineupId) {
+    const { data: lineupRow, error: lineupError } = await supabase
+      .from('lineups')
+      .select('*')
+      .eq('id', winnerLineupId)
+      .maybeSingle();
+
+    if (lineupError) {
+      console.error('Error fetching winner lineup:', lineupError);
+    } else if (lineupRow) {
+      const lineupWithProfile = { ...(lineupRow as any), profiles: winnerProfile || undefined } as LineupRow & {
+        profiles?: Profile;
+      };
+      lineup = lineupRowToPublicLineup(lineupWithProfile);
+    }
+  }
+
+  return {
+    challengeId: (data as any).id as string,
+    challengeTitle: (data as any).title as string,
+    challengeTheme: (data as any).theme as string,
+    challengeEndDate: (data as any).end_date as string,
+    winnerLineupId,
+    winnerUserId,
+    winnerUsername: winnerProfile?.username ?? null,
+    winnerAvatarColor: typeof winnerProfile?.avatar_color === 'number' ? winnerProfile.avatar_color : null,
+    winnerVotesCount: typeof (data as any).winner_votes_count === 'number' ? (data as any).winner_votes_count : null,
+    winnerResolvedAt: ((data as any).winner_resolved_at as string | null) ?? null,
+    lineup,
+    isLegacy: false,
+  };
+}
+
 export async function fetchPublicLineups(limit = 20, offset = 0): Promise<PublicLineup[]> {
   if (!isSupabaseConfigured() || !supabase) {
     return [];
@@ -1775,6 +2091,8 @@ export interface Notification {
     lineupId?: string;
     voterId?: string;
     voterUsername?: string;
+    challengeId?: string;
+    challengeTitle?: string;
   };
   isRead: boolean;
   createdAt: string;
