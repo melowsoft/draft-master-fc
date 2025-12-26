@@ -13,8 +13,8 @@ import { Challenge, Lineup } from '@/data/types';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { fetchActiveChallenges, fetchTrendingLineups, fetchUserChallengeEntry, PublicLineup, seedDefaultChallenges } from '@/services/communityService';
-import { isSupabaseConfigured } from '@/services/supabase';
+import { fetchActiveChallenges, fetchPublicLineups, fetchUserChallengeEntry, PublicLineup, seedDefaultChallenges } from '@/services/communityService';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
 
 const sampleChallenges: Challenge[] = [
   {
@@ -298,8 +298,25 @@ export default function DiscoverScreen() {
     try {
       if (isConnected) {
         await seedDefaultChallenges();
-        const lineups = await fetchTrendingLineups(5);
-        setTrendingLineups(lineups);
+        const lineups = await fetchPublicLineups(10, 0);
+
+        let hydratedLineups = lineups;
+        if (user?.id && supabase && lineups.length > 0) {
+          const lineupIds = lineups.map((l) => l.id);
+          const { data: voteRows } = await supabase
+            .from('votes')
+            .select('lineup_id')
+            .eq('user_id', user.id)
+            .in('lineup_id', lineupIds);
+
+          const votedLineupIds = new Set((voteRows || []).map((v: any) => v.lineup_id));
+          hydratedLineups = lineups.map((l) => ({
+            ...l,
+            hasVoted: votedLineupIds.has(l.id),
+          }));
+        }
+
+        setTrendingLineups(hydratedLineups);
         try {
           const activeChallenges = await fetchActiveChallenges();
           setChallenges(activeChallenges);
@@ -313,7 +330,7 @@ export default function DiscoverScreen() {
       }
     } catch (error) {
       console.error('Error loading discover data:', error);
-      setTrendingLineups(sampleTrendingLineups as unknown as PublicLineup[]);
+      setTrendingLineups([]);
       setChallenges(isConnected ? [] : sampleChallenges);
       if (isConnected) {
         setChallengesError(error instanceof Error ? error.message : 'Failed to load discover data');
@@ -330,7 +347,21 @@ export default function DiscoverScreen() {
   }, [isConnected]);
 
   const handleLineupPress = (lineup: Lineup) => {
-    router.push(`/lineup/${lineup.id}?isOwner=false`);
+    if (!isConnected) {
+      return;
+    }
+
+    const publicLineup = lineup as PublicLineup;
+    const query = [
+      'mode=challengeVote',
+      'isOwner=false',
+      'isReadOnly=true',
+      `entryUserId=${encodeURIComponent(publicLineup.userId || '')}`,
+      `entryUsername=${encodeURIComponent(publicLineup.username || 'Anonymous')}`,
+      `hasVoted=${publicLineup.hasVoted ? 'true' : 'false'}`,
+    ].join('&');
+
+    router.push(`/lineup/${publicLineup.id}?${query}`);
   };
 
   const handleComparePress = () => {
@@ -359,7 +390,7 @@ export default function DiscoverScreen() {
   const remainingChallenges = challenges
     .filter(c => c.id !== featuredChallenge?.id)
     .slice(0, 4);
-  const displayLineups = trendingLineups.length > 0 ? trendingLineups : sampleTrendingLineups;
+  const displayLineups = isConnected ? trendingLineups : sampleTrendingLineups;
 
   const renderHeader = () => (
     <View style={styles.headerContent}>

@@ -1,37 +1,37 @@
 // screens/DiscoverScreen.tsx
-import React, { useState, useCallback, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  RefreshControl,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Platform,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    View,
+} from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
-import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
-import { Lineup, Challenge } from '@/data/types';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { formations } from '@/data/formations';
-import { isSupabaseConfigured } from '@/services/supabase';
-import {
-  fetchTrendingLineups,
-  fetchActiveChallenges,
-  PublicLineup,
-} from '@/services/communityService';
+import { Challenge, Lineup } from '@/data/types';
+import { useScreenInsets } from '@/hooks/use-screen-insets';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import {
+    fetchActiveChallenges,
+    fetchPublicLineups,
+    PublicLineup,
+} from '@/services/communityService';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
 
 const sampleChallenges: Challenge[] = [
   {
@@ -362,7 +362,7 @@ export default function DiscoverScreen() {
   const { theme, isDark } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trendingLineups, setTrendingLineups] = useState<PublicLineup[]>([]);
@@ -378,22 +378,39 @@ export default function DiscoverScreen() {
     try {
       if (isConnected) {
         const [lineups, activeChallenges] = await Promise.all([
-          fetchTrendingLineups(5),
+          fetchPublicLineups(10, 0),
           fetchActiveChallenges(),
         ]);
-        setTrendingLineups(lineups);
+
+        let hydratedLineups = lineups;
+        if (user?.id && supabase && lineups.length > 0) {
+          const lineupIds = lineups.map((l) => l.id);
+          const { data: voteRows } = await supabase
+            .from('votes')
+            .select('lineup_id')
+            .eq('user_id', user.id)
+            .in('lineup_id', lineupIds);
+
+          const votedLineupIds = new Set((voteRows || []).map((v: any) => v.lineup_id));
+          hydratedLineups = lineups.map((l) => ({
+            ...l,
+            hasVoted: votedLineupIds.has(l.id),
+          }));
+        }
+
+        setTrendingLineups(hydratedLineups);
         if (activeChallenges.length > 0) {
           setChallenges(activeChallenges);
         } else {
           setChallenges(sampleChallenges);
         }
       } else {
-        setTrendingLineups(sampleTrendingLineups as unknown as PublicLineup[]);
+        setTrendingLineups([]);
         setChallenges(sampleChallenges);
       }
     } catch (error) {
       console.error('Error loading discover data:', error);
-      setTrendingLineups(sampleTrendingLineups as unknown as PublicLineup[]);
+      setTrendingLineups([]);
       setChallenges(sampleChallenges);
     } finally {
       setLoading(false);
@@ -408,7 +425,22 @@ export default function DiscoverScreen() {
 
   const handleLineupPress = (lineup: Lineup) => {
     // Use Expo Router navigation
-    router.push(`/lineup/${lineup.id}`);
+    if (!isConnected) {
+      router.push(`/lineup/${lineup.id}`);
+      return;
+    }
+
+    const publicLineup = lineup as PublicLineup;
+    const query = [
+      'mode=challengeVote',
+      'isOwner=false',
+      'isReadOnly=true',
+      `entryUserId=${encodeURIComponent(publicLineup.userId || '')}`,
+      `entryUsername=${encodeURIComponent(publicLineup.username || 'Anonymous')}`,
+      `hasVoted=${publicLineup.hasVoted ? 'true' : 'false'}`,
+    ].join('&');
+
+    router.push(`/lineup/${publicLineup.id}?${query}`);
     // Note: You might need to pass additional data via query params or context
   };
 
@@ -425,7 +457,7 @@ export default function DiscoverScreen() {
     ? challenges.slice(1)
     : sampleChallenges.slice(1)
   ).slice(0, 4);
-  const displayLineups = trendingLineups.length > 0 ? trendingLineups : sampleTrendingLineups;
+  const displayLineups = trendingLineups;
 
   const renderHeader = () => (
     <View style={styles.headerContent}>
