@@ -29,7 +29,8 @@ import { deleteLineup, loadLineups } from '@/data/storage';
 import { Lineup } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import ShareLineupModal from '@/screens/ShareLineupModal';
-import { fetchLineupById } from '@/services/communityService';
+import { useAuth } from '@/services/authContext';
+import { fetchLineupById, voteForLineup } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -42,15 +43,25 @@ export default function LineupDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const viewShotRef = useRef<ViewShot>(null);
+  const { user } = useAuth();
   
   const id = params.id as string;
   const isOwner = params.isOwner === 'true';
   const isReadOnly = params.isReadOnly === 'true';
-  
+  const mode = params.mode as string | undefined;
+  const isChallengeVote = mode === 'challengeVote';
+
+  const challengeTitle = params.challengeTitle as string | undefined;
+  const challengeEndDate = params.challengeEndDate as string | undefined;
+  const submittedAt = params.submittedAt as string | undefined;
+  const entryUsername = params.entryUsername as string | undefined;
+  const entryUserId = params.entryUserId as string | undefined;
+
   // State for lineup data
   const [lineup, setLineup] = useState<Lineup | null>(null);
   const [votes, setVotes] = useState(0);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [hasVoted, setHasVoted] = useState(params.hasVoted === 'true');
+  const [isVoting, setIsVoting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
@@ -64,7 +75,7 @@ export default function LineupDetailScreen() {
       try {
         let foundLineup: Lineup | null = null;
 
-        if (isReadOnly && isSupabaseConfigured()) {
+        if ((isReadOnly || isChallengeVote) && isSupabaseConfigured()) {
           foundLineup = await fetchLineupById(id);
         }
 
@@ -89,7 +100,34 @@ export default function LineupDetailScreen() {
     };
 
     loadLineupData();
-  }, [id, isReadOnly, router]);
+  }, [id, isChallengeVote, isReadOnly, router]);
+
+  const isOwnChallengeEntry = !!user?.id && !!entryUserId && user.id === entryUserId;
+
+  const handleChallengeVote = async () => {
+    if (!user?.id) return;
+    if (hasVoted || isOwnChallengeEntry || isVoting) return;
+
+    try {
+      setIsVoting(true);
+      const result = await voteForLineup(id, user.id);
+      if (!result.success) {
+        Alert.alert('Vote Failed', result.error || 'Unable to vote for this entry.');
+        return;
+      }
+
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      setHasVoted(true);
+      setVotes((prev) =>
+        typeof result.newVoteCount === 'number' ? result.newVoteCount : prev + 1
+      );
+    } finally {
+      setIsVoting(false);
+    }
+  };
 
   const handleVote = (isUpvote: boolean) => {
     if (hasVoted || !lineup) return;
@@ -393,6 +431,69 @@ export default function LineupDetailScreen() {
         </View>
       </ViewShot>
 
+      {isChallengeVote && (
+        <View style={[styles.challengeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+          <View style={styles.challengeHeader}>
+            <Feather name="award" size={18} color={theme.primary} />
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
+              Challenge Entry
+            </ThemedText>
+          </View>
+
+          {challengeTitle ? (
+            <ThemedText type="body" style={{ fontWeight: '700', marginTop: Spacing.sm }} numberOfLines={2}>
+              {challengeTitle}
+            </ThemedText>
+          ) : null}
+
+          <View style={styles.challengeMetaRow}>
+            {entryUsername ? (
+              <View style={styles.challengeMetaItem}>
+                <Feather name="user" size={14} color={theme.textSecondary} />
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+                  {entryUsername}
+                </ThemedText>
+              </View>
+            ) : null}
+
+            <View style={styles.challengeMetaItem}>
+              <Feather name="thumbs-up" size={14} color={theme.textSecondary} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+                {votes.toLocaleString()}
+              </ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.challengeMetaRow}>
+            {challengeEndDate ? (
+              <View style={styles.challengeMetaItem}>
+                <Feather name="calendar" size={14} color={theme.textSecondary} />
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+                  Ends {new Date(challengeEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </ThemedText>
+              </View>
+            ) : null}
+
+            {submittedAt ? (
+              <View style={styles.challengeMetaItem}>
+                <Feather name="check-circle" size={14} color={theme.textSecondary} />
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+                  Entered {new Date(submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
+
+          <Button
+            onPress={hasVoted || isOwnChallengeEntry ? undefined : handleChallengeVote}
+            disabled={hasVoted || isOwnChallengeEntry || isVoting}
+            style={{ marginTop: Spacing.lg, opacity: hasVoted || isOwnChallengeEntry ? 0.6 : 1 }}
+          >
+            {isOwnChallengeEntry ? 'Your Entry' : hasVoted ? 'Voted' : isVoting ? 'Voting...' : 'Vote for Entry'}
+          </Button>
+        </View>
+      )}
+
       {!isOwner && !isReadOnly && (
         <View style={styles.voteSection}>
           <ThemedText type="h4" style={styles.sectionTitle}>Rate this lineup</ThemedText>
@@ -651,6 +752,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
+  },
+  challengeCard: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.lg,
+    marginBottom: Spacing['2xl'],
+  },
+  challengeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  challengeMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+  },
+  challengeMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   voteSection: {
     marginBottom: Spacing['2xl'],

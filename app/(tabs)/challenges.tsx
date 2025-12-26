@@ -9,7 +9,7 @@ import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { ChallengeVotingEntry, EnteredChallenge, fetchChallengeVotingEntries, fetchUserEnteredChallenges, voteForLineup } from '@/services/communityService';
+import { ChallengeVotingEntry, EnteredChallenge, fetchChallengeVotingEntries, fetchUserEnteredChallenges } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 function formatShortDate(dateString: string) {
@@ -108,19 +108,38 @@ function ChallengeRow({ item }: { item: EnteredChallenge }) {
 function VotingRow({
   item,
   userId,
-  onVote,
 }: {
   item: ChallengeVotingEntry;
   userId: string;
-  onVote: (entry: ChallengeVotingEntry) => void;
 }) {
   const { theme } = useTheme();
+  const router = useRouter();
   const votes = item.lineup.votes ?? 0;
   const hasVoted = !!item.lineup.hasVoted;
   const isOwn = item.lineup.userId === userId;
 
+  const handlePress = () => {
+    const query = [
+      'mode=challengeVote',
+      'isOwner=false',
+      'isReadOnly=true',
+      `challengeId=${encodeURIComponent(item.challengeId)}`,
+      `challengeTitle=${encodeURIComponent(item.challengeTitle)}`,
+      `challengeEndDate=${encodeURIComponent(item.challengeEndDate)}`,
+      `submittedAt=${encodeURIComponent(item.submittedAt)}`,
+      `entryUserId=${encodeURIComponent(item.lineup.userId)}`,
+      `entryUsername=${encodeURIComponent(item.lineup.username)}`,
+      `hasVoted=${hasVoted ? 'true' : 'false'}`,
+    ].join('&');
+
+    router.push(`/lineup/${item.lineup.id}?${query}`);
+  };
+
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+    <Pressable
+      onPress={handlePress}
+      style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+    >
       <View style={styles.cardHeader}>
         <View style={[styles.badge, { backgroundColor: theme.primary + '20' }]}>
           <Feather name="award" size={16} color={theme.primary} />
@@ -157,22 +176,14 @@ function VotingRow({
             Ends {formatShortDate(item.challengeEndDate)}
           </ThemedText>
         </View>
-        <Pressable
-          onPress={hasVoted || isOwn ? undefined : () => onVote(item)}
-          style={[
-            styles.voteButton,
-            {
-              backgroundColor: hasVoted || isOwn ? theme.backgroundSecondary : theme.primary,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <ThemedText type="small" style={{ color: hasVoted || isOwn ? theme.textSecondary : '#FFFFFF', fontWeight: '700' }}>
-            {isOwn ? 'Your Entry' : hasVoted ? 'Voted' : 'Vote'}
+        <View style={styles.metaItem}>
+          <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6, fontWeight: '700' }}>
+            {isOwn ? 'Your Entry' : hasVoted ? 'Voted' : 'View & Vote'}
           </ThemedText>
-        </Pressable>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -239,32 +250,6 @@ export default function ChallengesScreen() {
   useEffect(() => {
     loadActiveTab();
   }, [activeTab, loadActiveTab]);
-
-  const handleVote = useCallback(
-    async (entry: ChallengeVotingEntry) => {
-      if (!user?.id) return;
-      const result = await voteForLineup(entry.lineup.id, user.id);
-      if (!result.success) {
-        return;
-      }
-
-      setVotingEntries((prev) =>
-        prev.map((e) =>
-          e.lineup.id === entry.lineup.id
-            ? {
-                ...e,
-                lineup: {
-                  ...e.lineup,
-                  votes: typeof result.newVoteCount === 'number' ? result.newVoteCount : (e.lineup.votes ?? 0) + 1,
-                  hasVoted: true,
-                },
-              }
-            : e
-        )
-      );
-    },
-    [user?.id]
-  );
 
   const renderTabSwitcher = (
     <View style={[styles.tabSwitcher, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
@@ -397,7 +382,7 @@ export default function ChallengesScreen() {
         <FlatList
           data={votingEntries}
           keyExtractor={(item) => `${item.challengeId}:${item.lineup.id}:${item.submittedAt}`}
-          renderItem={({ item }) => <VotingRow item={item} userId={user.id} onVote={handleVote} />}
+          renderItem={({ item }) => <VotingRow item={item} userId={user.id} />}
           contentContainerStyle={[styles.listContent, { paddingTop, paddingBottom }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
