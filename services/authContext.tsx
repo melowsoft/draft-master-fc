@@ -298,8 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setAnonymousUser(null);
     await AsyncStorage.removeItem(ANONYMOUS_USER_KEY);
-    
-    // Navigate to auth screen
+
     router.replace('/(auth)');
   }
 

@@ -1,7 +1,7 @@
 import { ColorSchemeProvider } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthProvider, useAuth } from '@/services/authContext';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -17,22 +17,6 @@ function RootLayoutNav() {
       void SplashScreen.hideAsync();
     }
   }, [isLoading]);
-
-  // Handle initial auth state
-  useEffect(() => {    
-    if (!isLoading) {
-      if (isAuthenticated) {
-        console.log('✅ User authenticated');
-        // Don't navigate here, let the render handle it
-      } else {
-        console.log('❌ User not authenticated');
-        // Ensure we're on auth screen if not authenticated
-        if (router.canGoBack()) {
-          router.replace('/(auth)');
-        }
-      }
-    }
-  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (
