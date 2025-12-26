@@ -76,6 +76,7 @@ function challengeRowToChallenge(row: ChallengeRow, participantCount: number): C
 export interface EnteredChallenge extends Challenge {
   enteredAt: string;
   lineupId: string;
+  votesCount?: number;
 }
 
 export interface ChallengeVotingEntry {
@@ -200,12 +201,41 @@ export async function voteForLineup(lineupId: string, userId: string): Promise<{
 
   const { data: lineup, error: updateError } = await supabase
     .from('lineups')
-    .select('votes_count')
+    .select('votes_count, user_id, name')
     .eq('id', lineupId)
     .single();
 
   if (updateError) {
     console.error('Error updating vote count:', updateError);
+  }
+
+  try {
+    const recipientUserId = (lineup as any)?.user_id as string | undefined;
+    if (recipientUserId && recipientUserId !== userId) {
+      const { data: voterProfile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const voterUsername = (voterProfile as any)?.username as string | undefined;
+      const voterLabel = voterUsername ? `@${voterUsername}` : 'Someone';
+      const lineupName = ((lineup as any)?.name as string | undefined) || 'your lineup';
+
+      await supabase.from('notifications').insert({
+        user_id: recipientUserId,
+        type: 'vote_received',
+        title: 'New vote received',
+        body: `${voterLabel} voted on ${lineupName}`,
+        data: {
+          lineupId,
+          voterId: userId,
+          voterUsername,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Error creating vote notification:', error);
   }
 
   return { success: true, newVoteCount: lineup?.votes_count };
@@ -447,6 +477,23 @@ export async function fetchUserEnteredChallenges(userId: string): Promise<Entere
     return [];
   }
 
+  const lineupIds = [...new Set((data || []).map((row: any) => row.lineup_id).filter(Boolean))] as string[];
+  const voteCountMap = new Map<string, number>();
+  if (lineupIds.length > 0) {
+    const { data: lineups, error: lineupsError } = await supabase
+      .from('lineups')
+      .select('id, votes_count')
+      .in('id', lineupIds);
+
+    if (lineupsError) {
+      console.error('Error fetching lineup vote counts:', lineupsError);
+    } else {
+      (lineups || []).forEach((l: any) => {
+        voteCountMap.set(l.id, l.votes_count || 0);
+      });
+    }
+  }
+
   const entered = await Promise.all(
     (data || []).map(async (row: any) => {
       const challengeRow = row.challenges as ChallengeRow | null;
@@ -465,6 +512,7 @@ export async function fetchUserEnteredChallenges(userId: string): Promise<Entere
         ...challenge,
         enteredAt: row.created_at,
         lineupId: row.lineup_id,
+        votesCount: voteCountMap.get(row.lineup_id) || 0,
       } as EnteredChallenge;
     })
   );
@@ -1696,6 +1744,9 @@ export interface Notification {
     topicTitle?: string;
     communityName?: string;
     authorUsername?: string;
+    lineupId?: string;
+    voterId?: string;
+    voterUsername?: string;
   };
   isRead: boolean;
   createdAt: string;

@@ -25,6 +25,7 @@ function ChallengeRow({ item }: { item: EnteredChallenge }) {
   const { theme, isDark } = useTheme();
   const remainingDays = daysUntil(item.endDate);
   const isEnded = remainingDays < 0;
+  const votes = item.votesCount ?? 0;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
@@ -59,13 +60,28 @@ function ChallengeRow({ item }: { item: EnteredChallenge }) {
 
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
+          <Feather name="thumbs-up" size={14} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+            {votes.toLocaleString()}
+          </ThemedText>
+        </View>
+        <View style={styles.metaItem}>
+          <Feather name="calendar" size={14} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+            Ends {formatShortDate(item.endDate)}
+          </ThemedText>
+        </View>
+      </View>
+
+      <View style={styles.metaRow}>
+        <View style={styles.metaItem}>
           <Feather name="check-circle" size={14} color={theme.textSecondary} />
           <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 6 }}>
             Entered {formatShortDate(item.enteredAt)}
           </ThemedText>
         </View>
         <View style={styles.metaItem}>
-          <Feather name="calendar" size={14} color={theme.textSecondary} />
+          <Feather name="clock" size={14} color={theme.textSecondary} />
           <ThemedText
             type="small"
             style={{
@@ -157,7 +173,7 @@ export default function ChallengesScreen() {
   const { paddingTop, paddingBottom } = useScreenInsets();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'my' | 'voting'>('my');
+  const [activeTab, setActiveTab] = useState<'my' | 'voting'>('voting');
 
   const [myChallenges, setMyChallenges] = useState<EnteredChallenge[]>([]);
   const [votingEntries, setVotingEntries] = useState<ChallengeVotingEntry[]>([]);
@@ -245,17 +261,6 @@ export default function ChallengesScreen() {
   const renderTabSwitcher = (
     <View style={[styles.tabSwitcher, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
       <Pressable
-        onPress={() => setActiveTab('my')}
-        style={[
-          styles.tabButton,
-          activeTab === 'my' && { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
-        ]}
-      >
-        <ThemedText type="small" style={{ fontWeight: '700', color: activeTab === 'my' ? theme.text : theme.textSecondary }}>
-          My Challenges
-        </ThemedText>
-      </Pressable>
-      <Pressable
         onPress={() => setActiveTab('voting')}
         style={[
           styles.tabButton,
@@ -264,6 +269,17 @@ export default function ChallengesScreen() {
       >
         <ThemedText type="small" style={{ fontWeight: '700', color: activeTab === 'voting' ? theme.text : theme.textSecondary }}>
           Challenge Voting
+        </ThemedText>
+      </Pressable>
+        <Pressable
+        onPress={() => setActiveTab('my')}
+        style={[
+          styles.tabButton,
+          activeTab === 'my' && { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
+        ]}
+      >
+        <ThemedText type="small" style={{ fontWeight: '700', color: activeTab === 'my' ? theme.text : theme.textSecondary }}>
+          My Challenges
         </ThemedText>
       </Pressable>
     </View>

@@ -1,28 +1,28 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  FlatList, 
-  RefreshControl, 
-  ActivityIndicator 
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    View
+} from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
-import { Spacing, BorderRadius } from '@/constants/theme';
-import { 
-  Notification, 
-  fetchNotifications, 
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-} from '@/services/communityService';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import {
+    Notification,
+    deleteNotification,
+    fetchNotifications,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
+} from '@/services/communityService';
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
@@ -49,6 +49,7 @@ function NotificationItem({
   onDelete: () => void;
 }) {
   const { theme } = useTheme();
+  const iconName = notification.type === 'vote_received' ? 'thumbs-up' : 'at-sign';
   
   return (
     <Pressable
@@ -62,7 +63,7 @@ function NotificationItem({
       ]}
     >
       <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
-        <Feather name="at-sign" size={20} color="#FFFFFF" />
+        <Feather name={iconName as any} size={20} color="#FFFFFF" />
       </View>
       
       <View style={styles.notificationContent}>
@@ -144,6 +145,11 @@ export default function NotificationsScreen() {
     
     if (notification.data.topicId) {
       router.push(`/topic-detail/${notification.data.topicId}`);
+      return;
+    }
+
+    if (notification.data.lineupId) {
+      router.push(`/lineup/${notification.data.lineupId}`);
     }
   };
 
