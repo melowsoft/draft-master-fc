@@ -1,18 +1,18 @@
-import { Tabs , useRouter , useFocusEffect } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { Platform, StyleSheet, View, Pressable, Text } from 'react-native';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring 
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
 import { getUnreadNotificationCount } from '@/services/communityService';
-import { Spacing, Colors } from '@/constants/theme';
-import { useEffect, useState, useCallback } from 'react';
+import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { Tabs, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring
+} from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -115,6 +115,15 @@ export default function TabLayout() {
             title: 'My Lineups',
             tabBarIcon: ({ color, size }) => (
               <Feather name="clipboard" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="challenges"
+          options={{
+            title: 'Challenges',
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="flag" size={size} color={color} />
             ),
           }}
         />

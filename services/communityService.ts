@@ -1,8 +1,8 @@
-import { supabase, isSupabaseConfigured } from './supabase';
-import { Lineup, Formation, Player, Challenge } from '../data/types';
-import { LineupRow, Profile, ChallengeRow } from './database.types';
-import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Challenge, Formation, Lineup, Player } from '../data/types';
+import { ChallengeRow, LineupRow, Profile } from './database.types';
+import { isSupabaseConfigured, supabase } from './supabase';
 
 export interface Community {
   id: string;
@@ -69,6 +69,11 @@ function challengeRowToChallenge(row: ChallengeRow, participantCount: number): C
     endDate: row.end_date,
     participants: participantCount,
   };
+}
+
+export interface EnteredChallenge extends Challenge {
+  enteredAt: string;
+  lineupId: string;
 }
 
 export async function fetchPublicLineups(limit = 20, offset = 0): Promise<PublicLineup[]> {
@@ -267,6 +272,51 @@ export async function enterChallenge(challengeId: string, lineupId: string, user
   }
 
   return { success: true };
+}
+
+export async function fetchUserEnteredChallenges(userId: string): Promise<EnteredChallenge[]> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('challenge_entries')
+    .select(`
+      created_at,
+      lineup_id,
+      challenges (*)
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching user entered challenges:', error);
+    return [];
+  }
+
+  const entered = await Promise.all(
+    (data || []).map(async (row: any) => {
+      const challengeRow = row.challenges as ChallengeRow | null;
+      if (!challengeRow) {
+        return null;
+      }
+
+      const { count } = await supabase!
+        .from('challenge_entries')
+        .select('*', { count: 'exact', head: true })
+        .eq('challenge_id', challengeRow.id);
+
+      const challenge = challengeRowToChallenge(challengeRow, count || 0);
+
+      return {
+        ...challenge,
+        enteredAt: row.created_at,
+        lineupId: row.lineup_id,
+      } as EnteredChallenge;
+    })
+  );
+
+  return entered.filter(Boolean) as EnteredChallenge[];
 }
 
 export async function toggleFavorite(lineupId: string, userId: string): Promise<{ success: boolean; isFavorited: boolean; error?: string }> {
