@@ -61,6 +61,7 @@ function lineupRowToPublicLineup(row: LineupRow & { profiles?: Profile }, curren
 }
 
 function challengeRowToChallenge(row: ChallengeRow, participantCount: number): Challenge {
+  const isFeatured = ((row as any).is_featured ?? (row as any).isFeatured) as boolean | undefined;
   return {
     id: row.id,
     title: row.title,
@@ -68,6 +69,7 @@ function challengeRowToChallenge(row: ChallengeRow, participantCount: number): C
     theme: row.theme,
     endDate: row.end_date,
     participants: participantCount,
+    isFeatured: !!isFeatured,
   };
 }
 
@@ -225,32 +227,127 @@ export async function fetchActiveChallenges(): Promise<Challenge[]> {
     return [];
   }
 
-  const now = new Date().toISOString();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const { data, error } = await supabase
+  const { data: futureOrToday, error: futureOrTodayError } = await supabase
     .from('challenges')
     .select('*')
     .eq('is_active', true)
-    .gte('end_date', now)
+    .gte('end_date', today)
     .order('end_date', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching challenges:', error);
-    return [];
+  if (futureOrTodayError) {
+    console.error('Error fetching challenges:', futureOrTodayError);
+    throw new Error(futureOrTodayError.message);
+  }
+
+  const { data: anyActive, error: anyActiveError } =
+    (futureOrToday || []).length > 0
+      ? { data: futureOrToday, error: null }
+      : await supabase
+          .from('challenges')
+          .select('*')
+          .eq('is_active', true)
+          .order('end_date', { ascending: true });
+
+  if (anyActiveError) {
+    console.error('Error fetching challenges:', anyActiveError);
+    throw new Error(anyActiveError.message);
   }
 
   const challengesWithParticipants = await Promise.all(
-    (data || []).map(async (challenge) => {
-      const { count } = await supabase!
+    (anyActive || []).map(async (challenge) => {
+      const { count, error: countError } = await supabase!
         .from('challenge_entries')
         .select('*', { count: 'exact', head: true })
         .eq('challenge_id', challenge.id);
+
+      if (countError) {
+        console.error('Error counting challenge entries:', countError);
+      }
 
       return challengeRowToChallenge(challenge, count || 0);
     })
   );
 
-  return challengesWithParticipants;
+  return challengesWithParticipants.sort((a, b) => Number(!!b.isFeatured) - Number(!!a.isFeatured));
+}
+
+function addDaysIso(days: number) {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+export async function seedDefaultChallenges(): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { success: false, error: 'Backend not configured' };
+  }
+
+  const { count, error: countError } = await supabase
+    .from('challenges')
+    .select('id', { count: 'exact', head: true });
+
+  if (countError) {
+    return { success: false, error: countError.message };
+  }
+
+  if ((count || 0) > 0) {
+    return { success: true };
+  }
+
+  const defaults = [
+    {
+      title: 'Best XI of All Time',
+      description: 'Build your ultimate dream team with players from any era',
+      theme: 'legends',
+      start_date: new Date().toISOString(),
+      end_date: addDaysIso(7),
+      is_active: true,
+      is_featured: true,
+    },
+    {
+      title: 'Premier League Legends',
+      description: 'Create the best XI from Premier League history',
+      theme: 'league',
+      start_date: new Date().toISOString(),
+      end_date: addDaysIso(10),
+      is_active: true,
+      is_featured: false,
+    },
+    {
+      title: 'Under 25 Stars',
+      description: 'Build a team with only rising stars under 25',
+      theme: 'youth',
+      start_date: new Date().toISOString(),
+      end_date: addDaysIso(14),
+      is_active: true,
+      is_featured: false,
+    },
+    {
+      title: 'World Cup Winners',
+      description: 'Only players who have won the World Cup',
+      theme: 'champions',
+      start_date: new Date().toISOString(),
+      end_date: addDaysIso(21),
+      is_active: true,
+      is_featured: false,
+    },
+    {
+      title: "Ballon d'Or Dream Team",
+      description: "Build a squad featuring Ballon d'Or winners and nominees",
+      theme: 'awards',
+      start_date: new Date().toISOString(),
+      end_date: addDaysIso(28),
+      is_active: true,
+      is_featured: false,
+    },
+  ];
+
+  const { error: insertError } = await supabase.from('challenges').insert(defaults);
+  if (insertError) {
+    return { success: false, error: insertError.message };
+  }
+
+  return { success: true };
 }
 
 export async function enterChallenge(challengeId: string, lineupId: string, userId: string): Promise<{ success: boolean; error?: string }> {

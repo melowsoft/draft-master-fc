@@ -13,7 +13,7 @@ import { Challenge, Lineup } from '@/data/types';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { fetchActiveChallenges, fetchTrendingLineups, PublicLineup } from '@/services/communityService';
+import { fetchActiveChallenges, fetchTrendingLineups, PublicLineup, seedDefaultChallenges } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 const sampleChallenges: Challenge[] = [
@@ -285,6 +285,7 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(true);
   const [trendingLineups, setTrendingLineups] = useState<PublicLineup[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [challengesError, setChallengesError] = useState<string | null>(null);
   const isConnected = isSupabaseConfigured();
 
   useEffect(() => {
@@ -293,17 +294,18 @@ export default function DiscoverScreen() {
 
   const loadData = async () => {
     setLoading(true);
+    setChallengesError(null);
     try {
       if (isConnected) {
-        const [lineups, activeChallenges] = await Promise.all([
-          fetchTrendingLineups(5),
-          fetchActiveChallenges(),
-        ]);
+        await seedDefaultChallenges();
+        const lineups = await fetchTrendingLineups(5);
         setTrendingLineups(lineups);
-        if (activeChallenges.length > 0) {
+        try {
+          const activeChallenges = await fetchActiveChallenges();
           setChallenges(activeChallenges);
-        } else {
-          setChallenges(sampleChallenges);
+        } catch (e) {
+          setChallenges([]);
+          setChallengesError(e instanceof Error ? e.message : 'Failed to load challenges');
         }
       } else {
         setTrendingLineups(sampleTrendingLineups as unknown as PublicLineup[]);
@@ -312,7 +314,10 @@ export default function DiscoverScreen() {
     } catch (error) {
       console.error('Error loading discover data:', error);
       setTrendingLineups(sampleTrendingLineups as unknown as PublicLineup[]);
-      setChallenges(sampleChallenges);
+      setChallenges(isConnected ? [] : sampleChallenges);
+      if (isConnected) {
+        setChallengesError(error instanceof Error ? error.message : 'Failed to load discover data');
+      }
     } finally {
       setLoading(false);
     }
@@ -333,11 +338,16 @@ export default function DiscoverScreen() {
   };
 
   const handleChallengePress = (challenge: Challenge) => {
-    router.push('/create-lineup');
+    router.push({
+      pathname: '/create-lineup',
+      params: { challengeId: challenge.id },
+    });
   };
 
-  const featuredChallenge = challenges[0] || sampleChallenges[0];
-  const remainingChallenges = (challenges.length > 1 ? challenges.slice(1) : sampleChallenges.slice(1)).slice(0, 4);
+  const featuredChallenge = challenges.find(c => c.isFeatured) || challenges[0];
+  const remainingChallenges = challenges
+    .filter(c => c.id !== featuredChallenge?.id)
+    .slice(0, 4);
   const displayLineups = trendingLineups.length > 0 ? trendingLineups : sampleTrendingLineups;
 
   const renderHeader = () => (
@@ -363,10 +373,19 @@ export default function DiscoverScreen() {
         <ThemedText type="h3">Featured Challenge</ThemedText>
       </View>
       
-      <ChallengeCard 
-        challenge={featuredChallenge} 
-        onPress={() => handleChallengePress(featuredChallenge)}
-      />
+      {featuredChallenge ? (
+        <ChallengeCard
+          challenge={featuredChallenge}
+          onPress={() => handleChallengePress(featuredChallenge)}
+        />
+      ) : (
+        <View style={[styles.emptyState, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name="flag" size={24} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+            {challengesError ? `Unable to load challenges: ${challengesError}` : 'No active challenges right now.'}
+          </ThemedText>
+        </View>
+      )}
       
       <View style={[styles.sectionHeader, { marginTop: Spacing.xl }]}>
         <ThemedText type="h3">Trending Lineups</ThemedText>

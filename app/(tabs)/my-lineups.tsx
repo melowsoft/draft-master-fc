@@ -185,7 +185,7 @@ export default function MyLineupsScreen() {
   const fetchLineups = useCallback(async () => {
     try {
       const data = await loadLineups();
-      setLineups(data);
+      setLineups(data.filter(l => !l.isChallengeEntry));
     } catch (error) {
       console.error('Error loading lineups:', error);
     } finally {

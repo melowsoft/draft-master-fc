@@ -91,6 +91,7 @@ export interface Database {
           start_date: string;
           end_date: string;
           is_active: boolean;
+          is_featured: boolean;
           created_at: string;
         };
         Insert: {
@@ -101,6 +102,7 @@ export interface Database {
           start_date: string;
           end_date: string;
           is_active?: boolean;
+          is_featured?: boolean;
           created_at?: string;
         };
         Update: {
@@ -110,6 +112,7 @@ export interface Database {
           start_date?: string;
           end_date?: string;
           is_active?: boolean;
+          is_featured?: boolean;
         };
       };
       challenge_entries: {

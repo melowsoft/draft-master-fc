@@ -36,13 +36,20 @@ import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { searchFC25Players } from '@/data/fc25Players';
 import { formations, getDefaultFormation } from '@/data/formations';
 import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, updateLineup } from '@/data/storage';
-import { Formation, FormationPosition, Player, Position } from '@/data/types';
+import { Formation, FormationPosition, Lineup, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/services/authContext';
+import { enterChallenge, publishLineup } from '@/services/communityService';
+import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PITCH_HEIGHT = 420;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 const ERA_OPTIONS = ['ALL', 'Modern'];
 const POSITION_OPTIONS = ['ALL', 'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
@@ -432,6 +439,7 @@ export default function CreateLineupScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const viewShotRef = useRef<ViewShot>(null);
   const pitchRef = useRef<View>(null);
@@ -441,6 +449,15 @@ export default function CreateLineupScreen() {
   
   // Get lineup data from params if editing
   const editLineup = params.editLineup ? JSON.parse(params.editLineup as string) : null;
+  const challengeIdParam =
+    typeof params.challengeId === 'string'
+      ? params.challengeId
+      : Array.isArray(params.challengeId)
+        ? params.challengeId[0]
+        : undefined;
+
+  const challengeId: string | undefined = challengeIdParam || editLineup?.challengeId;
+  const isChallengeFlow = !!challengeId && isUuid(challengeId) && isSupabaseConfigured();
   
   const [lineupName, setLineupName] = useState(editLineup?.name || 'My Lineup');
   const [selectedFormation, setSelectedFormation] = useState<Formation>(
@@ -759,7 +776,7 @@ export default function CreateLineupScreen() {
       return;
     }
 
-    const lineup = {
+    const lineup: Lineup = {
       id: editLineup?.id || generateId(),
       name: lineupName.trim(),
       formation: selectedFormation,
@@ -767,16 +784,42 @@ export default function CreateLineupScreen() {
       createdAt: editLineup?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       votes: editLineup?.votes || 0,
-      isPublic: false,
+      isPublic: isChallengeFlow ? true : false,
       badgeUri,
+      isChallengeEntry: isChallengeFlow,
+      challengeId,
     };
 
     try {
-      if (editLineup) {
-        await updateLineup(lineup);
+      if (isChallengeFlow) {
+        if (!user?.id) {
+          Alert.alert('Sign In Required', 'Please sign in to submit a challenge entry.');
+          return;
+        }
+
+        const publishResult = await publishLineup(lineup, user.id);
+        if (!publishResult.success) {
+          Alert.alert('Error', publishResult.error || 'Failed to submit challenge entry');
+          return;
+        }
+
+        if (editLineup) {
+          await updateLineup(lineup);
+        } else {
+          const entryResult = await enterChallenge(challengeId!, lineup.id, user.id);
+          if (!entryResult.success) {
+            Alert.alert('Error', entryResult.error || 'Failed to submit challenge entry');
+            return;
+          }
+        }
       } else {
-        await addLineup(lineup);
+        if (editLineup) {
+          await updateLineup(lineup);
+        } else {
+          await addLineup(lineup);
+        }
       }
+
       router.back();
     } catch (error) {
       Alert.alert('Error', 'Failed to save lineup');
@@ -858,7 +901,9 @@ export default function CreateLineupScreen() {
               <Feather name="share" size={20} color={theme.primary} />
             </Pressable>
             <Pressable onPress={handleSave} hitSlop={12}>
-              <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>Save</ThemedText>
+              <ThemedText type="body" style={{ color: theme.primary, fontWeight: '600' }}>
+                {isChallengeFlow ? 'Submit' : 'Save'}
+              </ThemedText>
             </Pressable>
           </View>
         </View>

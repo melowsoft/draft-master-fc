@@ -56,6 +56,8 @@ export interface Lineup {
   votes?: number;
   isPublic?: boolean;
   badgeUri?: string;
+  isChallengeEntry?: boolean;
+  challengeId?: string;
 }
 
 export interface Challenge {
@@ -65,6 +67,7 @@ export interface Challenge {
   theme: string;
   endDate: string;
   participants: number;
+  isFeatured?: boolean;
 }
 
 // Add UserData interface for local storage
