@@ -13,7 +13,7 @@ import { Challenge, Lineup } from '@/data/types';
 import { useScreenInsets } from '@/hooks/use-screen-insets';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { fetchActiveChallenges, fetchTrendingLineups, PublicLineup, seedDefaultChallenges } from '@/services/communityService';
+import { fetchActiveChallenges, fetchTrendingLineups, fetchUserChallengeEntry, PublicLineup, seedDefaultChallenges } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 const sampleChallenges: Challenge[] = [
@@ -280,7 +280,7 @@ export default function DiscoverScreen() {
   const { theme, isDark } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trendingLineups, setTrendingLineups] = useState<PublicLineup[]>([]);
@@ -337,10 +337,21 @@ export default function DiscoverScreen() {
     router.push('/player-comparison');
   };
 
-  const handleChallengePress = (challenge: Challenge) => {
+  const handleChallengePress = async (challenge: Challenge) => {
+    if (isConnected && user?.id) {
+      const existing = await fetchUserChallengeEntry(challenge.id, user.id);
+      if (existing.exists) {
+        router.push({
+          pathname: '/challenge-submitted',
+          params: { challengeId: challenge.id, challengeTitle: challenge.title },
+        });
+        return;
+      }
+    }
+
     router.push({
       pathname: '/create-lineup',
-      params: { challengeId: challenge.id },
+      params: { challengeId: challenge.id, challengeTitle: challenge.title },
     });
   };
 

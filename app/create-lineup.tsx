@@ -39,7 +39,7 @@ import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCusto
 import { Formation, FormationPosition, Lineup, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
-import { enterChallenge, publishLineup } from '@/services/communityService';
+import { enterChallenge, fetchUserChallengeEntry, publishLineup } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -456,6 +456,13 @@ export default function CreateLineupScreen() {
         ? params.challengeId[0]
         : undefined;
 
+  const challengeTitleParam =
+    typeof params.challengeTitle === 'string'
+      ? params.challengeTitle
+      : Array.isArray(params.challengeTitle)
+        ? params.challengeTitle[0]
+        : undefined;
+
   const challengeId: string | undefined = challengeIdParam || editLineup?.challengeId;
   const isChallengeFlow = !!challengeId && isUuid(challengeId) && isSupabaseConfigured();
   
@@ -797,6 +804,15 @@ export default function CreateLineupScreen() {
           return;
         }
 
+        const existing = await fetchUserChallengeEntry(challengeId!, user.id);
+        if (existing.exists) {
+          router.replace({
+            pathname: '/challenge-submitted',
+            params: { challengeId: challengeId!, challengeTitle: challengeTitleParam },
+          });
+          return;
+        }
+
         const publishResult = await publishLineup(lineup, user.id);
         if (!publishResult.success) {
           Alert.alert('Error', publishResult.error || 'Failed to submit challenge entry');
@@ -808,10 +824,22 @@ export default function CreateLineupScreen() {
         } else {
           const entryResult = await enterChallenge(challengeId!, lineup.id, user.id);
           if (!entryResult.success) {
+            if (entryResult.error === 'ALREADY_ENTERED') {
+              router.replace({
+                pathname: '/challenge-submitted',
+                params: { challengeId: challengeId!, challengeTitle: challengeTitleParam },
+              });
+              return;
+            }
             Alert.alert('Error', entryResult.error || 'Failed to submit challenge entry');
             return;
           }
         }
+        router.replace({
+          pathname: '/challenge-entry-submitted',
+          params: { challengeId: challengeId!, challengeTitle: challengeTitleParam },
+        });
+        return;
       } else {
         if (editLineup) {
           await updateLineup(lineup);

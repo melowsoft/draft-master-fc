@@ -355,6 +355,23 @@ export async function enterChallenge(challengeId: string, lineupId: string, user
     return { success: false, error: 'Backend not configured' };
   }
 
+  const { data: existing, error: existingError } = await supabase
+    .from('challenge_entries')
+    .select('id')
+    .eq('challenge_id', challengeId)
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error('Error checking existing entry:', existingError);
+    return { success: false, error: existingError.message };
+  }
+
+  if (existing) {
+    return { success: false, error: 'ALREADY_ENTERED' };
+  }
+
   const { error } = await supabase
     .from('challenge_entries')
     .insert({
@@ -364,11 +381,42 @@ export async function enterChallenge(challengeId: string, lineupId: string, user
     });
 
   if (error) {
+    if ((error as any).code === '23505') {
+      return { success: false, error: 'ALREADY_ENTERED' };
+    }
     console.error('Error entering challenge:', error);
     return { success: false, error: error.message };
   }
 
   return { success: true };
+}
+
+export async function fetchUserChallengeEntry(
+  challengeId: string,
+  userId: string
+): Promise<{ exists: boolean; lineupId?: string; enteredAt?: string; error?: string }> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return { exists: false, error: 'Backend not configured' };
+  }
+
+  const { data, error } = await supabase
+    .from('challenge_entries')
+    .select('lineup_id, created_at')
+    .eq('challenge_id', challengeId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return { exists: false, error: error.message };
+  }
+
+  if (!data) {
+    return { exists: false };
+  }
+
+  return { exists: true, lineupId: data.lineup_id, enteredAt: data.created_at };
 }
 
 export async function fetchUserEnteredChallenges(userId: string): Promise<EnteredChallenge[]> {
