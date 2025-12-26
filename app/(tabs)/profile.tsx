@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -318,6 +319,14 @@ export default function ProfileScreen() {
     setShowEditModal(true);
   };
 
+  const handleOpenLegal = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      Alert.alert('Error', 'Could not open this page. Please try again.');
+    }
+  };
+
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to log out?');
@@ -475,8 +484,16 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>App</ThemedText>
           <SettingsItem icon="info" label="About DraftMaster FC" />
-          <SettingsItem icon="file-text" label="Terms of Service" />
-          <SettingsItem icon="shield" label="Privacy Policy" />
+          <SettingsItem
+            icon="file-text"
+            label="Terms of Service"
+            onPress={() => handleOpenLegal('https://www.draftmasterfc.com/terms')}
+          />
+          <SettingsItem
+            icon="shield"
+            label="Privacy Policy"
+            onPress={() => handleOpenLegal('https://www.draftmasterfc.com/privacy')}
+          />
         </View>
 
         <View style={styles.section}>

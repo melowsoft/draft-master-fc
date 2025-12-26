@@ -390,7 +390,7 @@ export default function AuthScreen() {
             <ThemedText 
               type="small" 
               style={[styles.footerLink, { color: theme.primary }]}
-              onPress={() => WebBrowser.openBrowserAsync('https://www.draftmasterfc.com/privacy-policy')}
+              onPress={() => WebBrowser.openBrowserAsync('https://www.draftmasterfc.com/privacy')}
             >
               Privacy Policy
             </ThemedText>
