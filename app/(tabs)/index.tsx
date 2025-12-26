@@ -284,6 +284,12 @@ export default function DiscoverScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trendingLineups, setTrendingLineups] = useState<PublicLineup[]>([]);
+  const [trendingChallengeInfo, setTrendingChallengeInfo] = useState<
+    Record<
+      string,
+      { challengeId: string; challengeTitle: string; challengeEndDate?: string; submittedAt?: string }
+    >
+  >({});
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [challengesError, setChallengesError] = useState<string | null>(null);
   const isConnected = isSupabaseConfigured();
@@ -317,6 +323,51 @@ export default function DiscoverScreen() {
         }
 
         setTrendingLineups(hydratedLineups);
+
+        if (supabase && hydratedLineups.length > 0) {
+          const lineupIds = hydratedLineups.map((l) => l.id);
+          const { data: entryRows } = await supabase
+            .from('challenge_entries')
+            .select(
+              `
+              lineup_id,
+              created_at,
+              challenge_id,
+              challenges:challenge_id (
+                title,
+                end_date
+              )
+            `
+            )
+            .in('lineup_id', lineupIds)
+            .order('created_at', { ascending: false });
+
+          const infoByLineupId: Record<
+            string,
+            { challengeId: string; challengeTitle: string; challengeEndDate?: string; submittedAt?: string }
+          > = {};
+
+          (entryRows || []).forEach((row: any) => {
+            const lineupId = row?.lineup_id as string | undefined;
+            if (!lineupId) return;
+            if (infoByLineupId[lineupId]) return;
+
+            const challengeTitle = row?.challenges?.title as string | undefined;
+            if (!challengeTitle) return;
+
+            infoByLineupId[lineupId] = {
+              challengeId: row?.challenge_id as string,
+              challengeTitle,
+              challengeEndDate: row?.challenges?.end_date as string | undefined,
+              submittedAt: row?.created_at as string | undefined,
+            };
+          });
+
+          setTrendingChallengeInfo(infoByLineupId);
+        } else {
+          setTrendingChallengeInfo({});
+        }
+
         try {
           const activeChallenges = await fetchActiveChallenges();
           setChallenges(activeChallenges);
@@ -331,6 +382,7 @@ export default function DiscoverScreen() {
     } catch (error) {
       console.error('Error loading discover data:', error);
       setTrendingLineups([]);
+      setTrendingChallengeInfo({});
       setChallenges(isConnected ? [] : sampleChallenges);
       if (isConnected) {
         setChallengesError(error instanceof Error ? error.message : 'Failed to load discover data');
@@ -352,10 +404,15 @@ export default function DiscoverScreen() {
     }
 
     const publicLineup = lineup as PublicLineup;
+    const details = trendingChallengeInfo[publicLineup.id];
     const query = [
       'mode=challengeVote',
       'isOwner=false',
       'isReadOnly=true',
+      ...(details?.challengeId ? [`challengeId=${encodeURIComponent(details.challengeId)}`] : []),
+      ...(details?.challengeTitle ? [`challengeTitle=${encodeURIComponent(details.challengeTitle)}`] : []),
+      ...(details?.challengeEndDate ? [`challengeEndDate=${encodeURIComponent(details.challengeEndDate)}`] : []),
+      ...(details?.submittedAt ? [`submittedAt=${encodeURIComponent(details.submittedAt)}`] : []),
       `entryUserId=${encodeURIComponent(publicLineup.userId || '')}`,
       `entryUsername=${encodeURIComponent(publicLineup.username || 'Anonymous')}`,
       `hasVoted=${publicLineup.hasVoted ? 'true' : 'false'}`,
