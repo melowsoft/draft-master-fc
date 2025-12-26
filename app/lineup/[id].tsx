@@ -29,6 +29,8 @@ import { deleteLineup, loadLineups } from '@/data/storage';
 import { Lineup } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import ShareLineupModal from '@/screens/ShareLineupModal';
+import { fetchLineupById } from '@/services/communityService';
+import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 380;
@@ -43,6 +45,7 @@ export default function LineupDetailScreen() {
   
   const id = params.id as string;
   const isOwner = params.isOwner === 'true';
+  const isReadOnly = params.isReadOnly === 'true';
   
   // State for lineup data
   const [lineup, setLineup] = useState<Lineup | null>(null);
@@ -59,8 +62,17 @@ export default function LineupDetailScreen() {
   React.useEffect(() => {
     const loadLineupData = async () => {
       try {
-        const lineups = await loadLineups();
-        const foundLineup = lineups.find(l => l.id === id);
+        let foundLineup: Lineup | null = null;
+
+        if (isReadOnly && isSupabaseConfigured()) {
+          foundLineup = await fetchLineupById(id);
+        }
+
+        if (!foundLineup) {
+          const lineups = await loadLineups();
+          foundLineup = lineups.find((l) => l.id === id) || null;
+        }
+
         if (foundLineup) {
           setLineup(foundLineup);
           setVotes(foundLineup.votes || 0);
@@ -77,7 +89,7 @@ export default function LineupDetailScreen() {
     };
 
     loadLineupData();
-  }, [id, router]);
+  }, [id, isReadOnly, router]);
 
   const handleVote = (isUpvote: boolean) => {
     if (hasVoted || !lineup) return;
@@ -158,6 +170,7 @@ export default function LineupDetailScreen() {
   };
 
   const handleEdit = () => {
+    if (isReadOnly) return;
     if (!lineup) return;
     router.push({
       pathname: '/create-lineup',
@@ -166,6 +179,7 @@ export default function LineupDetailScreen() {
   };
 
   const handleDelete = () => {
+    if (isReadOnly) return;
     if (!lineup) return;
     
     Alert.alert(
@@ -379,7 +393,7 @@ export default function LineupDetailScreen() {
         </View>
       </ViewShot>
 
-      {!isOwner && (
+      {!isOwner && !isReadOnly && (
         <View style={styles.voteSection}>
           <ThemedText type="h4" style={styles.sectionTitle}>Rate this lineup</ThemedText>
           <View style={styles.voteButtons}>
@@ -482,7 +496,7 @@ export default function LineupDetailScreen() {
           </Pressable>
         </View>
         
-        {isOwner && (
+        {isOwner && !isReadOnly && (
           <View style={styles.ownerActions}>
             <Pressable 
               onPress={handleEdit}

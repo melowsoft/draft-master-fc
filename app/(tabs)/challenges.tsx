@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -23,12 +23,20 @@ function daysUntil(dateString: string) {
 
 function ChallengeRow({ item }: { item: EnteredChallenge }) {
   const { theme, isDark } = useTheme();
+  const router = useRouter();
   const remainingDays = daysUntil(item.endDate);
   const isEnded = remainingDays < 0;
   const votes = item.votesCount ?? 0;
 
+  const handlePress = () => {
+    router.push(`/lineup/${item.lineupId}?isOwner=true&isReadOnly=true`);
+  };
+
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+    <Pressable
+      onPress={handlePress}
+      style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+    >
       <View style={styles.cardHeader}>
         <View style={[styles.badge, { backgroundColor: theme.primary + '20' }]}>
           <Feather name="flag" size={16} color={theme.primary} />
@@ -93,7 +101,7 @@ function ChallengeRow({ item }: { item: EnteredChallenge }) {
           </ThemedText>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

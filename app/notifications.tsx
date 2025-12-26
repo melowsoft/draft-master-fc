@@ -149,6 +149,11 @@ export default function NotificationsScreen() {
     }
 
     if (notification.data.lineupId) {
+      if (notification.type === 'vote_received') {
+        router.push(`/lineup/${notification.data.lineupId}?isOwner=true&isReadOnly=true`);
+        return;
+      }
+
       router.push(`/lineup/${notification.data.lineupId}`);
     }
   };

@@ -174,6 +174,34 @@ export async function unpublishLineup(lineupId: string): Promise<{ success: bool
   return { success: true };
 }
 
+export async function fetchLineupById(lineupId: string): Promise<Lineup | null> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('lineups')
+    .select('*')
+    .eq('id', lineupId)
+    .single();
+
+  if (error || !data) {
+    console.error('Error fetching lineup:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    formation: data.formation_data as unknown as Formation,
+    players: (data.players_data as unknown as { [positionId: string]: Player }) || {},
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+    votes: data.votes_count,
+    isPublic: data.is_public,
+  };
+}
+
 export async function voteForLineup(lineupId: string, userId: string): Promise<{ success: boolean; newVoteCount?: number; error?: string }> {
   if (!isSupabaseConfigured() || !supabase) {
     return { success: false, error: 'Backend not configured' };
