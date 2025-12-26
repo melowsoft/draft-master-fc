@@ -18,6 +18,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { formations } from '@/data/formations';
 import { clearAllData, loadLineups, loadUser, saveUser, UserData } from '@/data/storage';
 import { Lineup } from '@/data/types';
 import { useScreenInsets } from '@/hooks/use-screen-insets'; // Add this import
@@ -114,6 +115,7 @@ export default function ProfileScreen() {
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUsername, setEditUsername] = useState('');
+  const [editFavoriteFormation, setEditFavoriteFormation] = useState('4-3-3');
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -262,6 +264,7 @@ export default function ProfileScreen() {
           name: editUsername.trim(),
           avatar: selectedAvatar,
           avatarUrl: profileImage || undefined,
+          favoriteFormation: editFavoriteFormation,
         };
         await saveUser(updatedUser);
         setUser(updatedUser);
@@ -277,6 +280,7 @@ export default function ProfileScreen() {
         username: editUsername.trim(),
         avatar_color: selectedAvatar,
         avatar_url: avatarUrl,
+        favorite_formation: editFavoriteFormation,
       });
       
       setShowEditModal(false);
@@ -289,7 +293,12 @@ export default function ProfileScreen() {
   };
 
   const handleOpenEditModal = () => {
+    const isRemoteProfile = Boolean(profile?.id && !profile.id.startsWith('anon_') && isSupabaseConfigured());
+    const favoriteFormation = isRemoteProfile
+      ? (profile?.favorite_formation || user?.favoriteFormation || '4-3-3')
+      : (user?.favoriteFormation || profile?.favorite_formation || '4-3-3');
     setEditUsername(profile?.username || user?.name || 'Football Fan');
+    setEditFavoriteFormation(favoriteFormation);
     setShowEditModal(true);
   };
 
@@ -351,6 +360,10 @@ export default function ProfileScreen() {
   };
   
   const displayName = profile?.username || user?.name || 'Football Fan';
+  const isRemoteProfile = Boolean(profile?.id && !profile.id.startsWith('anon_') && isSupabaseConfigured());
+  const favoriteFormation = isRemoteProfile
+    ? (profile?.favorite_formation || user?.favoriteFormation || '4-3-3')
+    : (user?.favoriteFormation || profile?.favorite_formation || '4-3-3');
   const memberSince = user ? new Date(user.createdAt).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
@@ -432,7 +445,8 @@ export default function ProfileScreen() {
           <SettingsItem 
             icon="grid" 
             label="Favorite Formation" 
-            value={user?.favoriteFormation || '4-3-3'}
+            value={favoriteFormation}
+            onPress={handleOpenEditModal}
           />
           <SettingsItem 
             icon="moon" 
@@ -530,6 +544,42 @@ export default function ProfileScreen() {
                 autoCapitalize="none"
                 maxLength={30}
               />
+            </View>
+
+            <View style={styles.formationSelectSection}>
+              <ThemedText type="body" style={styles.inputLabel}>Favorite Formation</ThemedText>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.formationList}
+              >
+                {formations.map((formation) => {
+                  const isSelected = editFavoriteFormation === formation.id;
+                  return (
+                    <Pressable
+                      key={formation.id}
+                      onPress={() => setEditFavoriteFormation(formation.id)}
+                      style={[
+                        styles.formationChip,
+                        {
+                          backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary,
+                          borderColor: isSelected ? theme.primary : theme.border,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        type="small"
+                        style={{
+                          fontWeight: '600',
+                          color: isSelected ? '#FFFFFF' : theme.text,
+                        }}
+                      >
+                        {formation.name}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
 
             <View style={styles.avatarSelectSection}>
@@ -756,6 +806,18 @@ const styles = StyleSheet.create({
   },
   inputSection: {
     marginBottom: Spacing.xl,
+  },
+  formationSelectSection: {
+    marginBottom: Spacing.xl,
+  },
+  formationList: {
+    gap: Spacing.sm,
+  },
+  formationChip: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   inputLabel: {
     marginBottom: Spacing.sm,

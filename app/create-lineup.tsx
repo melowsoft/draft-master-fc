@@ -34,8 +34,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { searchFC25Players } from '@/data/fc25Players';
-import { formations, getDefaultFormation } from '@/data/formations';
-import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, updateLineup } from '@/data/storage';
+import { formations, getDefaultFormation, getFormationById } from '@/data/formations';
+import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, loadUser, updateLineup } from '@/data/storage';
 import { Formation, FormationPosition, Lineup, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
@@ -439,7 +439,7 @@ export default function CreateLineupScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const viewShotRef = useRef<ViewShot>(null);
   const pitchRef = useRef<View>(null);
@@ -492,6 +492,27 @@ export default function CreateLineupScreen() {
   const searchInputRef = useRef<TextInput>(null);
 
   const pitchWidth = SCREEN_WIDTH - Spacing.xl * 2;
+
+  useEffect(() => {
+    if (editLineup?.formation) return;
+    if (selectedFormation.id !== getDefaultFormation().id) return;
+
+    let cancelled = false;
+    (async () => {
+      const localUser = await loadUser();
+      const favoriteFormationId = profile?.favorite_formation || localUser?.favoriteFormation || null;
+      const favoriteFormation = favoriteFormationId ? getFormationById(favoriteFormationId) : undefined;
+
+      if (cancelled) return;
+      if (favoriteFormation && favoriteFormation.id !== selectedFormation.id) {
+        setSelectedFormation(favoriteFormation);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editLineup?.formation, profile?.favorite_formation, selectedFormation.id]);
 
   useEffect(() => {
     const loadData = async () => {
