@@ -3,15 +3,15 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  TextInput,
-  View
+    Alert,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    TextInput,
+    View
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -23,6 +23,7 @@ import { Lineup } from '@/data/types';
 import { useScreenInsets } from '@/hooks/use-screen-insets'; // Add this import
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
+import { isSupabaseConfigured, supabase } from '@/services/supabase';
 
 // Note: You can create custom avatar components or use initials
 const AVATAR_COLORS = ['#1B5E20', '#0D47A1', '#4A148C', '#B71C1C', '#E65100'];
@@ -109,6 +110,7 @@ export default function ProfileScreen() {
   
   const [user, setUser] = useState<UserData | null>(null);
   const [lineups, setLineups] = useState<Lineup[]>([]);
+  const [totalVotes, setTotalVotes] = useState(0);
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUsername, setEditUsername] = useState('');
@@ -128,6 +130,39 @@ export default function ProfileScreen() {
       }
     }
   }, [profile]);
+
+  useEffect(() => {
+    const localTotalVotes = lineups.reduce((sum, l) => sum + (l.votes || 0), 0);
+    setTotalVotes(localTotalVotes);
+
+    const userId = profile?.id;
+    if (!isSupabaseConfigured() || !supabase || !userId) {
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('lineups')
+        .select('votes_count')
+        .eq('user_id', userId);
+
+      if (cancelled) return;
+      if (error) {
+        return;
+      }
+
+      const remoteTotalVotes = (data || []).reduce((sum: number, row: any) => {
+        return sum + ((row?.votes_count as number | null | undefined) || 0);
+      }, 0);
+
+      setTotalVotes(remoteTotalVotes);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lineups, profile?.id]);
 
   const loadUserData = async () => {
     const userData = await loadUser();
@@ -315,7 +350,6 @@ export default function ProfileScreen() {
     }
   };
   
-  const totalVotes = lineups.reduce((sum, l) => sum + (l.votes || 0), 0);
   const displayName = profile?.username || user?.name || 'Football Fan';
   const memberSince = user ? new Date(user.createdAt).toLocaleDateString('en-US', {
     month: 'long',
