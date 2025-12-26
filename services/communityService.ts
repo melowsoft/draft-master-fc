@@ -78,6 +78,14 @@ export interface EnteredChallenge extends Challenge {
   lineupId: string;
 }
 
+export interface ChallengeVotingEntry {
+  challengeId: string;
+  challengeTitle: string;
+  challengeEndDate: string;
+  submittedAt: string;
+  lineup: PublicLineup;
+}
+
 export async function fetchPublicLineups(limit = 20, offset = 0): Promise<PublicLineup[]> {
   if (!isSupabaseConfigured() || !supabase) {
     return [];
@@ -462,6 +470,116 @@ export async function fetchUserEnteredChallenges(userId: string): Promise<Entere
   );
 
   return entered.filter(Boolean) as EnteredChallenge[];
+}
+
+export async function fetchChallengeVotingEntries(
+  userId: string,
+  limit = 20,
+  offset = 0
+): Promise<ChallengeVotingEntry[]> {
+  if (!isSupabaseConfigured() || !supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('challenge_entries')
+    .select(
+      `
+      created_at,
+      challenge_id,
+      lineup_id,
+      challenges (*),
+      lineups:lineup_id!inner (
+        *
+      )
+    `
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching challenge voting entries:', error);
+    return [];
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const lineupUserIds = [
+    ...new Set(
+      (data || [])
+        .map((row: any) => row.lineups?.user_id as string | undefined)
+        .filter(Boolean)
+    ),
+  ] as string[];
+
+  const profileMap = new Map<string, Profile>();
+  if (lineupUserIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_color')
+      .in('id', lineupUserIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles for voting entries:', profilesError);
+    } else {
+      (profiles || []).forEach((p: any) => {
+        profileMap.set(p.id, p as Profile);
+      });
+    }
+  }
+
+  const entries = (data || [])
+    .map((row: any) => {
+      const challenge = row.challenges as ChallengeRow | null;
+      const lineupRow = row.lineups as LineupRow | null;
+
+      if (!challenge || !lineupRow) return null;
+      if (lineupRow.user_id === userId) return null;
+
+      const isActive = (challenge as any).is_active ?? true;
+      if (!isActive) return null;
+
+      const endDate = (challenge as any).end_date as string | undefined;
+      if (!endDate) return null;
+
+      const endDateOnly = endDate.slice(0, 10);
+      if (endDateOnly < today) return null;
+
+      const profile = profileMap.get(lineupRow.user_id) || undefined;
+      const lineupWithProfile = { ...(lineupRow as any), profiles: profile } as LineupRow & { profiles?: Profile };
+
+      return {
+        challengeId: row.challenge_id as string,
+        challengeTitle: (challenge as any).title as string,
+        challengeEndDate: endDate,
+        submittedAt: row.created_at as string,
+        lineup: lineupRowToPublicLineup(lineupWithProfile),
+      } satisfies ChallengeVotingEntry;
+    })
+    .filter(Boolean) as ChallengeVotingEntry[];
+
+  if (entries.length === 0) return [];
+
+  const lineupIds = entries.map((e) => e.lineup.id);
+  const { data: voteRows, error: votesError } = await supabase
+    .from('votes')
+    .select('lineup_id')
+    .eq('user_id', userId)
+    .in('lineup_id', lineupIds);
+
+  if (votesError) {
+    console.error('Error fetching voting state:', votesError);
+    return entries;
+  }
+
+  const votedLineupIds = new Set((voteRows || []).map((v: any) => v.lineup_id));
+  return entries.map((entry) => ({
+    ...entry,
+    lineup: {
+      ...entry.lineup,
+      hasVoted: votedLineupIds.has(entry.lineup.id),
+    },
+  }));
 }
 
 export async function toggleFavorite(lineupId: string, userId: string): Promise<{ success: boolean; isFavorited: boolean; error?: string }> {
