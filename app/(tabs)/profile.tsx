@@ -21,6 +21,7 @@ import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { formations } from '@/data/formations';
 import { clearAllData, loadLineups, loadUser, saveUser, UserData } from '@/data/storage';
 import { Lineup } from '@/data/types';
+import { useColorSchemePreference } from '@/hooks/use-color-scheme';
 import { useScreenInsets } from '@/hooks/use-screen-insets'; // Add this import
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/services/authContext';
@@ -108,6 +109,7 @@ export default function ProfileScreen() {
   const { theme, isDark } = useTheme();
   const { signOut, profile, updateProfile } = useAuth();
   const { paddingTop } = useScreenInsets(); // Get safe area insets
+  const { preference: colorSchemePreference, setPreference: setColorSchemePreference } = useColorSchemePreference();
   
   const [user, setUser] = useState<UserData | null>(null);
   const [lineups, setLineups] = useState<Lineup[]>([]);
@@ -116,6 +118,7 @@ export default function ProfileScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUsername, setEditUsername] = useState('');
   const [editFavoriteFormation, setEditFavoriteFormation] = useState('4-3-3');
+  const [editAppearance, setEditAppearance] = useState<'light' | 'dark'>('light');
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -176,6 +179,9 @@ export default function ProfileScreen() {
       setSelectedAvatar(userData.avatar);
       if (userData.avatarUrl) {
         setProfileImage(userData.avatarUrl);
+      }
+      if ((colorSchemePreference === 'system' || !colorSchemePreference) && userData.appearance) {
+        setColorSchemePreference(userData.appearance);
       }
     } else {
       const defaultUser: UserData = {
@@ -265,6 +271,7 @@ export default function ProfileScreen() {
           avatar: selectedAvatar,
           avatarUrl: profileImage || undefined,
           favoriteFormation: editFavoriteFormation,
+          appearance: editAppearance,
         };
         await saveUser(updatedUser);
         setUser(updatedUser);
@@ -282,6 +289,8 @@ export default function ProfileScreen() {
         avatar_url: avatarUrl,
         favorite_formation: editFavoriteFormation,
       });
+
+      setColorSchemePreference(editAppearance);
       
       setShowEditModal(false);
     } catch (error) {
@@ -297,8 +306,15 @@ export default function ProfileScreen() {
     const favoriteFormation = isRemoteProfile
       ? (profile?.favorite_formation || user?.favoriteFormation || '4-3-3')
       : (user?.favoriteFormation || profile?.favorite_formation || '4-3-3');
+    const appearance: 'light' | 'dark' =
+      colorSchemePreference === 'light' || colorSchemePreference === 'dark'
+        ? colorSchemePreference
+        : isDark
+          ? 'dark'
+          : 'light';
     setEditUsername(profile?.username || user?.name || 'Football Fan');
     setEditFavoriteFormation(favoriteFormation);
+    setEditAppearance(appearance);
     setShowEditModal(true);
   };
 
@@ -452,6 +468,7 @@ export default function ProfileScreen() {
             icon="moon" 
             label="Appearance" 
             value={isDark ? 'Dark' : 'Light'}
+            onPress={handleOpenEditModal}
           />
         </View>
 
@@ -580,6 +597,52 @@ export default function ProfileScreen() {
                   );
                 })}
               </ScrollView>
+            </View>
+
+            <View style={styles.appearanceSelectSection}>
+              <ThemedText type="body" style={styles.inputLabel}>Appearance</ThemedText>
+              <View style={styles.appearanceRow}>
+                <Pressable
+                  onPress={() => setEditAppearance('light')}
+                  style={[
+                    styles.appearanceChip,
+                    {
+                      backgroundColor: editAppearance === 'light' ? theme.primary : theme.backgroundSecondary,
+                      borderColor: editAppearance === 'light' ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="small"
+                    style={{
+                      fontWeight: '600',
+                      color: editAppearance === 'light' ? '#FFFFFF' : theme.text,
+                    }}
+                  >
+                    Light
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => setEditAppearance('dark')}
+                  style={[
+                    styles.appearanceChip,
+                    {
+                      backgroundColor: editAppearance === 'dark' ? theme.primary : theme.backgroundSecondary,
+                      borderColor: editAppearance === 'dark' ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="small"
+                    style={{
+                      fontWeight: '600',
+                      color: editAppearance === 'dark' ? '#FFFFFF' : theme.text,
+                    }}
+                  >
+                    Dark
+                  </ThemedText>
+                </Pressable>
+              </View>
             </View>
 
             <View style={styles.avatarSelectSection}>
@@ -818,6 +881,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
+  },
+  appearanceSelectSection: {
+    marginBottom: Spacing.xl,
+  },
+  appearanceRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  appearanceChip: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
   },
   inputLabel: {
     marginBottom: Spacing.sm,

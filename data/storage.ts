@@ -12,6 +12,7 @@ export interface UserData {
   avatar: number;
   avatarUrl?: string;
   favoriteFormation: string;
+  appearance?: 'light' | 'dark';
   createdAt: string;
 }
 

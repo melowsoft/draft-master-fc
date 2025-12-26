@@ -1,3 +1,4 @@
+import { ColorSchemeProvider } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthProvider, useAuth } from '@/services/authContext';
 import { router, Stack } from 'expo-router';
@@ -97,9 +98,11 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ColorSchemeProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ColorSchemeProvider>
   );
 }
 
