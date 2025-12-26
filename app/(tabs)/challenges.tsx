@@ -21,7 +21,15 @@ function daysUntil(dateString: string) {
   return Math.ceil((new Date(dateString).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-function ChallengeRow({ item }: { item: EnteredChallenge }) {
+function ChallengeRow({
+  item,
+  userId,
+  entryUsername,
+}: {
+  item: EnteredChallenge;
+  userId: string;
+  entryUsername: string;
+}) {
   const { theme, isDark } = useTheme();
   const router = useRouter();
   const remainingDays = daysUntil(item.endDate);
@@ -29,7 +37,20 @@ function ChallengeRow({ item }: { item: EnteredChallenge }) {
   const votes = item.votesCount ?? 0;
 
   const handlePress = () => {
-    router.push(`/lineup/${item.lineupId}?isOwner=true&isReadOnly=true`);
+    const query = [
+      'mode=challengeVote',
+      'isOwner=true',
+      'isReadOnly=true',
+      `challengeId=${encodeURIComponent(item.id)}`,
+      `challengeTitle=${encodeURIComponent(item.title)}`,
+      `challengeEndDate=${encodeURIComponent(item.endDate)}`,
+      `submittedAt=${encodeURIComponent(item.enteredAt)}`,
+      `entryUserId=${encodeURIComponent(userId)}`,
+      `entryUsername=${encodeURIComponent(entryUsername)}`,
+      'hasVoted=false',
+    ].join('&');
+
+    router.push(`/lineup/${item.lineupId}?${query}`);
   };
 
   return (
@@ -190,7 +211,7 @@ function VotingRow({
 export default function ChallengesScreen() {
   const { theme } = useTheme();
   const { paddingTop, paddingBottom } = useScreenInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'my' | 'voting'>('voting');
 
@@ -346,7 +367,9 @@ export default function ChallengesScreen() {
           <FlatList
             data={myChallenges}
             keyExtractor={(item) => `${item.id}:${item.enteredAt}`}
-            renderItem={({ item }) => <ChallengeRow item={item} />}
+            renderItem={({ item }) => (
+              <ChallengeRow item={item} userId={user.id} entryUsername={profile?.username || 'You'} />
+            )}
             contentContainerStyle={[styles.listContent, { paddingTop, paddingBottom }]}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
