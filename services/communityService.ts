@@ -611,26 +611,11 @@ export async function fetchActiveChallenges(): Promise<Challenge[]> {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: futureOrToday, error: futureOrTodayError } = await supabase
+  const { data: anyActive, error: anyActiveError } = await supabase
     .from('challenges')
     .select('*')
-    .eq('is_active', true)
-    .gte('end_date', today)
+    .or(`and(is_active.eq.true,end_date.gte.${today}),is_featured.eq.true`)
     .order('end_date', { ascending: true });
-
-  if (futureOrTodayError) {
-    console.error('Error fetching challenges:', futureOrTodayError);
-    throw new Error(futureOrTodayError.message);
-  }
-
-  const { data: anyActive, error: anyActiveError } =
-    (futureOrToday || []).length > 0
-      ? { data: futureOrToday, error: null }
-      : await supabase
-          .from('challenges')
-          .select('*')
-          .eq('is_active', true)
-          .order('end_date', { ascending: true });
 
   if (anyActiveError) {
     console.error('Error fetching challenges:', anyActiveError);

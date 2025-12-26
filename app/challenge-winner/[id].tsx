@@ -32,6 +32,7 @@ export default function ChallengeWinnerScreen() {
   const [loading, setLoading] = useState(true);
 
   const hasWinner = !!winner?.winnerLineupId && !!winner?.winnerUserId;
+  const isWinnerViewer = !!(hasWinner && user?.id && winner?.winnerUserId && user.id === winner.winnerUserId);
 
   const title = useMemo(() => {
     if (!winner) return 'Challenge Winner';
@@ -164,12 +165,18 @@ export default function ChallengeWinnerScreen() {
             </View>
 
             <ThemedText type="h3" style={{ textAlign: 'center', marginTop: Spacing.lg }}>
-              {hasWinner ? 'Congratulations!' : 'Winner Not Announced'}
+              {hasWinner ? (isWinnerViewer ? 'Congratulations!' : 'Challenge Ended') : 'Winner Not Announced'}
             </ThemedText>
 
             <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.sm }}>
               {title}
             </ThemedText>
+
+            {hasWinner ? (
+              <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.sm }}>
+                {isWinnerViewer ? 'You won this challenge.' : 'Winner details'}
+              </ThemedText>
+            ) : null}
 
             <View style={styles.metaRow}>
               <View style={[styles.metaPill, { backgroundColor: theme.backgroundSecondary }]}>
@@ -205,7 +212,7 @@ export default function ChallengeWinnerScreen() {
                 </View>
 
                 <Button onPress={handleViewLineup} style={{ marginTop: Spacing.lg }}>
-                  View Winning Lineup
+                  {isWinnerViewer ? 'View Your Winning Lineup' : 'View Winning Lineup'}
                 </Button>
               </>
             ) : (

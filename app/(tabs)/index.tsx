@@ -94,6 +94,19 @@ const sampleTrendingLineups: Lineup[] = [
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+function getChallengeEndTimeMs(dateString: string): number | null {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const monthIndex = Number(dateOnlyMatch[2]) - 1;
+    const day = Number(dateOnlyMatch[3]);
+    return new Date(year, monthIndex, day, 23, 59, 59, 999).getTime();
+  }
+
+  const parsed = Date.parse(dateString);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function QuickActionCard({ 
   icon, 
   title, 
@@ -144,8 +157,10 @@ function QuickActionCard({
 function ChallengeCard({ challenge, onPress }: { challenge: Challenge; onPress: () => void }) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
-  
-  const daysLeft = Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
+  const endMs = getChallengeEndTimeMs(challenge.endDate);
+  const daysLeft =
+    endMs == null ? 0 : Math.max(0, Math.ceil((endMs - Date.now()) / (1000 * 60 * 60 * 24)));
   
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -426,6 +441,12 @@ export default function DiscoverScreen() {
   };
 
   const handleChallengePress = async (challenge: Challenge) => {
+    const endMs = getChallengeEndTimeMs(challenge.endDate);
+    if (endMs != null && Date.now() >= endMs) {
+      router.push(`/challenge-winner/${challenge.id}`);
+      return;
+    }
+
     if (isConnected && user?.id) {
       const existing = await fetchUserChallengeEntry(challenge.id, user.id);
       if (existing.exists) {
