@@ -292,13 +292,13 @@ function PositionMarker({
             isDropTarget ? styles.dropTargetCircle : null,
             pulseStyle,
           ]}>
-            <ThemedText 
-              type="small" 
-              style={styles.playerMarkerRating}
-              numberOfLines={1}
-            >
-              {player.rating}
-            </ThemedText>
+            {player.image ? (
+              <Image source={{ uri: player.image }} style={styles.playerAvatar} contentFit="cover" />
+            ) : (
+              <ThemedText type="small" style={styles.playerMarkerRating} numberOfLines={1}>
+                {player.rating}
+              </ThemedText>
+            )}
           </Animated.View>
           <ThemedText 
             type="small" 
@@ -1637,11 +1637,16 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 4,
+  },
+  playerAvatar: {
+    width: '100%',
+    height: '100%',
   },
   emptyCircle: {
     borderRadius: 18,
