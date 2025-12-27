@@ -39,6 +39,13 @@ type ApiFootballPlayerProfileResponse = {
   };
 };
 
+type ApiFootballTeamSearchResponse = {
+  team?: {
+    id?: number;
+    name?: string;
+  };
+};
+
 const baseUrl = String(API_FOOTBALL_CONFIG.BASE_URL || 'https://v3.football.api-sports.io')
   .replace(/\/+$/, '')
   .trim();
@@ -46,6 +53,7 @@ const baseUrl = String(API_FOOTBALL_CONFIG.BASE_URL || 'https://v3.football.api-
 const apiSportsKey = String(API_FOOTBALL_CONFIG.API_KEY || '').trim();
 
 let requestCounter = 0;
+const teamIdCache = new Map<string, number>();
 
 function apiErrorsToMessage(errors: unknown): string | null {
   if (!errors) return null;
@@ -214,6 +222,40 @@ async function callApiFootball<T>({
   return (data?.response as T) ?? (undefined as unknown as T);
 }
 
+async function resolveTeamIdByName(teamName: string, signal?: AbortSignal): Promise<number> {
+  if (!isApiFootballConfigured()) {
+    throw new Error(getApiFootballConfigWarning());
+  }
+
+  const cleaned = String(teamName || '').trim();
+  if (!cleaned) throw new Error('Team name is required');
+
+  const key = cleaned.toLowerCase();
+  const cached = teamIdCache.get(key);
+  if (cached) return cached;
+
+  const results = await callApiFootball<ApiFootballTeamSearchResponse[]>({
+    endpoint: '/teams',
+    params: { search: cleaned },
+    signal,
+  });
+
+  const candidates = (Array.isArray(results) ? results : [])
+    .map((r) => ({
+      id: r?.team?.id,
+      name: (r?.team?.name || '').trim(),
+    }))
+    .filter((t): t is { id: number; name: string } => typeof t.id === 'number' && Number.isFinite(t.id) && Boolean(t.name));
+
+  const wanted = cleaned.toLowerCase();
+  const exact = candidates.find((t) => t.name.toLowerCase() === wanted);
+  const best = exact ?? candidates[0];
+  if (!best) throw new Error(`Team not found: ${cleaned}`);
+
+  teamIdCache.set(key, best.id);
+  return best.id;
+}
+
 export async function testApiConnection(): Promise<{ success: boolean; data?: unknown; error?: string }> {
   try {
     const data = await callApiFootball<{ account?: unknown }>({ endpoint: '/status' });
@@ -238,15 +280,15 @@ export async function searchApiFootballPlayers({
   const leagueId = leagueToApiFootballLeagueId(league);
 
   const response = await callApiFootball<ApiFootballPlayerResponse[]>({
-    endpoint: '/players/profiles',
+    endpoint: '/players',
     params: {
-   //   season: String(season),
+      season: String(season),
       ...(leagueId ? { league: String(leagueId) } : {}),
       ...(query && query.trim() ? { search: query.trim() } : {}),
     },
     signal,
   });
-console.log('API-Football /players response:', response);
+
   const mapped = (Array.isArray(response) ? response : [])
     .map((item): Player | null => {
       const player = item?.player;
@@ -268,6 +310,70 @@ console.log('API-Football /players response:', response);
         nationality: player?.nationality || 'Unknown',
         era: 'Modern',
         league: resolvedLeague,
+        rating: ratingFromApiFootball(stats?.games?.rating),
+        club,
+        age: typeof player?.age === 'number' ? player.age : undefined,
+        image: player?.photo || undefined,
+      };
+    })
+    .filter((p): p is Player => Boolean(p));
+
+  const seen = new Set<string>();
+  const unique = mapped.filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+
+  unique.sort((a, b) => b.rating - a.rating);
+  return unique;
+}
+
+export async function getApiFootballPlayersByTeamName({
+  teamName,
+  positionHint,
+  signal,
+}: {
+  teamName: string;
+  positionHint?: Position;
+  signal?: AbortSignal;
+}): Promise<Player[]> {
+  if (!isApiFootballConfigured()) {
+    throw new Error(getApiFootballConfigWarning());
+  }
+
+  const teamId = await resolveTeamIdByName(teamName, signal);
+  const season = getSeasonYear();
+
+  const response = await callApiFootball<ApiFootballPlayerResponse[]>({
+    endpoint: '/players',
+    params: {
+      season: String(season),
+      team: String(teamId),
+    },
+    signal,
+  });
+
+  const mapped = (Array.isArray(response) ? response : [])
+    .map((item): Player | null => {
+      const player = item?.player;
+      const stats = item?.statistics?.[0];
+      const apiId = player?.id;
+      const name = player?.name;
+      if (!apiId || !name) return null;
+
+      const position = normalizePositionFromApiFootball(stats?.games?.position, positionHint);
+      const club = stats?.team?.name || teamName || undefined;
+      const league = apiFootballLeagueIdToLeague(stats?.league?.id) || 'Other';
+
+      return {
+        id: `af_${apiId}`,
+        name,
+        position,
+        positions: [position],
+        nationality: player?.nationality || 'Unknown',
+        era: 'Modern',
+        league,
         rating: ratingFromApiFootball(stats?.games?.rating),
         club,
         age: typeof player?.age === 'number' ? player.age : undefined,

@@ -16,7 +16,6 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
-    Text,
     TextInput,
     View,
 } from 'react-native';
@@ -36,9 +35,9 @@ import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { formations, getDefaultFormation, getFormationById } from '@/data/formations';
 import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, loadUser, updateLineup } from '@/data/storage';
-import { Formation, FormationPosition, League, Lineup, Player, Position } from '@/data/types';
+import { Formation, FormationPosition, Lineup, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
-import { searchApiFootballPlayers, testApiConnection } from '@/services/apiFootballService';
+import { getApiFootballPlayersByTeamName } from '@/services/apiFootballService';
 import { useAuth } from '@/services/authContext';
 import { enterChallenge, fetchUserChallengeEntry, publishLineup } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
@@ -66,6 +65,16 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 const ERA_OPTIONS = ['ALL', 'Modern'];
 const POSITION_OPTIONS = ['ALL', 'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST', 'CF'];
 const LEAGUE_OPTIONS = ['ALL', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'Saudi Pro League', 'Other'];
+
+const TEAM_OPTIONS = [
+  { id: 'arsenal', label: 'Arsenal', apiName: 'Arsenal' },
+  { id: 'chelsea', label: 'Chelsea', apiName: 'Chelsea' },
+  { id: 'liverpool', label: 'Liverpool', apiName: 'Liverpool' },
+  { id: 'man-city', label: 'Man City', apiName: 'Manchester City' },
+  { id: 'man-united', label: 'Man United', apiName: 'Manchester United' },
+  { id: 'barcelona', label: 'Barcelona', apiName: 'Barcelona' },
+  { id: 'real-madrid', label: 'Real Madrid', apiName: 'Real Madrid' },
+] as const;
 
 function FormationSelector({ 
   selected, 
@@ -220,7 +229,7 @@ function PositionMarker({
   isSelected: boolean;
   isDropTarget: boolean;
 }) {
-  const { theme, isDark } = useTheme();
+  const { isDark } = useTheme();
   const scale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
 
@@ -230,7 +239,7 @@ function PositionMarker({
     } else {
       pulseScale.value = withSpring(1);
     }
-  }, [isSelected, isDropTarget]);
+  }, [isSelected, isDropTarget, pulseScale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -477,8 +486,6 @@ export default function CreateLineupScreen() {
 
   const challengeId: string | undefined = challengeIdParam || editLineup?.challengeId;
   const isChallengeFlow = !!challengeId && isUuid(challengeId) && isSupabaseConfigured();
-
-  const [apiTestResult, setApiTestResult] = useState<string>('');
   
   const [lineupName, setLineupName] = useState(editLineup?.name || 'My Lineup');
   const [selectedFormation, setSelectedFormation] = useState<Formation>(
@@ -494,7 +501,6 @@ export default function CreateLineupScreen() {
   const [eraFilter, setEraFilter] = useState<string>('ALL');
   const [leagueFilter, setLeagueFilter] = useState<string>('ALL');
   const [showFilters, setShowFilters] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [draggingPlayer, setDraggingPlayer] = useState<Player | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dropTargetPosition, setDropTargetPosition] = useState<string | null>(null);
@@ -505,9 +511,16 @@ export default function CreateLineupScreen() {
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [createPlayerForm, setCreatePlayerForm] = useState({ name: '', position: 'ST' as Position, rating: 75 });
   const searchInputRef = useRef<TextInput>(null);
-  const [apiPlayers, setApiPlayers] = useState<Player[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState<(typeof TEAM_OPTIONS)[number]['id']>('arsenal');
+  const [showTeamDropdown, setShowTeamDropdown] = useState(false);
+  const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
+  const [isTeamLoading, setIsTeamLoading] = useState(false);
+  const [teamLoadError, setTeamLoadError] = useState('');
+
+  const selectedTeam = useMemo(
+    () => TEAM_OPTIONS.find((t) => t.id === selectedTeamId) ?? TEAM_OPTIONS[0],
+    [selectedTeamId]
+  );
 
   const pitchWidth = SCREEN_WIDTH - Spacing.xl * 2;
 
@@ -544,54 +557,28 @@ export default function CreateLineupScreen() {
     loadData();
   }, []);
 
-useEffect(() => {
-  // Optionally test on mount, or create a button for it
-   testApi();
-}, []);
-
   useEffect(() => {
-    const query = debouncedSearchQuery.trim();
-    if (query.length < 2) {
-      setApiPlayers([]);
-      setIsSearching(false);
-      setSearchError('');
-      return;
-    }
-
-    const positionHint =
-      selectedPosition?.position || (positionFilter !== 'ALL' ? (positionFilter as Position) : undefined);
-    const league = (leagueFilter !== 'ALL' ? leagueFilter : 'Other') as League;
-
     const controller = new AbortController();
+    setIsTeamLoading(true);
+    setTeamLoadError('');
 
-    setIsSearching(true);
-    setSearchError('');
-
-    searchApiFootballPlayers({
-      query,
-      league,
-      positionHint,
+    getApiFootballPlayersByTeamName({
+      teamName: selectedTeam.apiName,
       signal: controller.signal,
     })
-      .then((players) => setApiPlayers(players))
+      .then((players) => setTeamPlayers(players))
       .catch((e) => {
         if (controller.signal.aborted) return;
-        setApiPlayers([]);
-        setSearchError(e instanceof Error ? e.message : String(e));
+        setTeamPlayers([]);
+        setTeamLoadError(e instanceof Error ? e.message : String(e));
       })
       .finally(() => {
         if (controller.signal.aborted) return;
-        setIsSearching(false);
+        setIsTeamLoading(false);
       });
 
     return () => controller.abort();
-  }, [debouncedSearchQuery, leagueFilter, positionFilter, selectedPosition?.position]);
-
-  const testApi = async () => {
-  console.log('🧪 Running API test...');
-  const result = await testApiConnection();
-  setApiTestResult(result.success ? '✅ API Connected!' : '❌ API Failed');
-};
+  }, [selectedTeam.apiName]);
 
   const handleCreateCustomFormation = () => {
     router.push('/custom-formation');
@@ -619,7 +606,7 @@ useEffect(() => {
             onPress: async () => {
               try {
                 await Linking.openSettings();
-              } catch (error) {
+              } catch {
                 // openSettings not supported on this platform
               }
             }
@@ -684,24 +671,7 @@ useEffect(() => {
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-  };
-
-  const autocompleteSuggestions = useMemo(() => {
-    if (searchQuery.length < 2) return [];
-    const position = selectedPosition ? selectedPosition.position : undefined;
-    const customResults = customPlayers.filter(p => {
-      const matchesQuery = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPosition = !position || p.position === position || p.positions?.includes(position);
-      return matchesQuery && matchesPosition;
-    });
-    const apiResults = apiPlayers.filter((p) => {
-      const matchesPosition = !position || p.position === position || p.positions?.includes(position);
-      return matchesPosition;
-    });
-    return [...customResults, ...apiResults].slice(0, 8);
-  }, [searchQuery, selectedPosition, customPlayers, apiPlayers]);
-
-  const showAutocomplete = isSearchFocused && searchQuery.length >= 2 && autocompleteSuggestions.length > 0;
+  }
 
   const handlePositionPress = (position: FormationPosition) => {
     setSelectedPosition(position);
@@ -720,7 +690,6 @@ useEffect(() => {
       setEraFilter('ALL');
       setLeagueFilter('ALL');
       setSearchQuery('');
-      setIsSearchFocused(false);
       Keyboard.dismiss();
     }
   };
@@ -830,13 +799,6 @@ useEffect(() => {
     }
   };
 
-  const handleAutocompleteSuggestionPress = (player: Player) => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    handlePlayerSelect(player);
-  };
-
   const handleFormationChange = (formation: Formation) => {
     setSelectedFormation(formation);
     setSelectedPlayers({});
@@ -863,7 +825,7 @@ useEffect(() => {
           }
         }
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Export Error', 'Failed to export lineup image');
     }
   };
@@ -940,7 +902,7 @@ useEffect(() => {
       }
 
       router.back();
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to save lineup');
     }
   };
@@ -971,28 +933,30 @@ useEffect(() => {
   const hasActiveFilters = positionFilter !== 'ALL' || eraFilter !== 'ALL' || leagueFilter !== 'ALL' || searchQuery !== '' || selectedPosition !== null;
 
   const filteredPlayers = useMemo(() => {
-    const position = selectedPosition ? selectedPosition.position : (positionFilter !== 'ALL' ? positionFilter : undefined);
+    const position = selectedPosition ? selectedPosition.position : positionFilter !== 'ALL' ? positionFilter : undefined;
+    const era = eraFilter !== 'ALL' ? eraFilter : undefined;
     const league = leagueFilter !== 'ALL' ? leagueFilter : undefined;
+    const query = debouncedSearchQuery.trim().toLowerCase();
 
-    // Include custom players in the list
-    const customResults = customPlayers.filter(p => {
-      const matchesQuery = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPosition = !position ? true : (p.position === position || p.positions?.includes(position as Position));
+    const customResults = customPlayers.filter((p) => {
+      const matchesQuery = !query || p.name.toLowerCase().includes(query);
+      const matchesPosition = !position ? true : p.position === position || p.positions?.includes(position as Position);
+      const matchesEra = !era || p.era === era;
       const matchesLeague = !league || p.league === league || p.league === 'Other';
-      return matchesQuery && matchesPosition && matchesLeague;
+      return matchesQuery && matchesPosition && matchesEra && matchesLeague;
     });
 
-    const apiResults = apiPlayers.filter((p) => {
-      const matchesQuery = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPosition = !position ? true : (p.position === position || p.positions?.includes(position as Position));
+    const teamResults = teamPlayers.filter((p) => {
+      const matchesQuery = !query || p.name.toLowerCase().includes(query);
+      const matchesPosition = !position ? true : p.position === position || p.positions?.includes(position as Position);
+      const matchesEra = !era || p.era === era;
       const matchesLeague = !league || p.league === league || p.league === 'Other';
-      return matchesQuery && matchesPosition && matchesLeague;
+      return matchesQuery && matchesPosition && matchesEra && matchesLeague;
     });
-    
-    // Show max 11 players initially (one full lineup), more when filtering
-    const limit = hasActiveFilters ? 50 : 11;
-    return [...customResults, ...apiResults].slice(0, limit);
-  }, [searchQuery, selectedPosition, positionFilter, leagueFilter, hasActiveFilters, customPlayers, apiPlayers]);
+
+    const limit = hasActiveFilters ? 50 : 30;
+    return [...customResults, ...teamResults].slice(0, limit);
+  }, [customPlayers, debouncedSearchQuery, eraFilter, hasActiveFilters, leagueFilter, positionFilter, selectedPosition, teamPlayers]);
 
   const alreadySelectedIds = new Set(Object.values(selectedPlayers).map(p => p.id));
 
@@ -1168,6 +1132,60 @@ useEffect(() => {
           </View>
 
           <View style={styles.searchBarContainer}>
+            <View style={styles.teamRow}>
+              <ThemedText type="small" style={[styles.teamLabel, { color: theme.textSecondary }]}>
+                Team
+              </ThemedText>
+              <Pressable
+                onPress={() => setShowTeamDropdown((v) => !v)}
+                style={[
+                  styles.teamSelect,
+                  { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                ]}
+              >
+                <ThemedText type="small" style={{ fontWeight: '600', color: theme.text }}>
+                  {selectedTeam.label}
+                </ThemedText>
+                <Feather
+                  name={showTeamDropdown ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+            </View>
+            {showTeamDropdown ? (
+              <Animated.View
+                entering={FadeIn.duration(150)}
+                style={[
+                  styles.teamDropdown,
+                  { backgroundColor: theme.backgroundDefault, borderColor: theme.border },
+                ]}
+              >
+                {TEAM_OPTIONS.map((t) => {
+                  const isSelected = t.id === selectedTeamId;
+                  return (
+                    <Pressable
+                      key={t.id}
+                      onPress={() => {
+                        setSelectedTeamId(t.id);
+                        setShowTeamDropdown(false);
+                        setSearchQuery('');
+                        setLeagueFilter('ALL');
+                      }}
+                      style={[
+                        styles.teamOption,
+                        { backgroundColor: isSelected ? theme.backgroundSecondary : 'transparent' },
+                      ]}
+                    >
+                      <ThemedText type="body" style={{ fontWeight: isSelected ? '700' : '500' }}>
+                        {t.label}
+                      </ThemedText>
+                      {isSelected ? <Feather name="check" size={16} color={theme.primary} /> : null}
+                    </Pressable>
+                  );
+                })}
+              </Animated.View>
+            ) : null}
             <View style={[styles.searchBar, { backgroundColor: theme.backgroundSecondary }]}>
               <Feather name="search" size={18} color={theme.textSecondary} />
               <TextInput
@@ -1175,63 +1193,16 @@ useEffect(() => {
                 style={[styles.searchInput, { color: theme.text }]}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setTimeout(() => setIsSearchFocused(false), 150)}
                 placeholder="Search players..."
                 placeholderTextColor={theme.textSecondary}
               />
               {searchQuery ? (
-                <Pressable onPress={() => { setSearchQuery(''); setIsSearchFocused(false); }}>
+                <Pressable onPress={() => { setSearchQuery(''); }}>
                   <Feather name="x" size={18} color={theme.textSecondary} />
                 </Pressable>
               ) : null}
             </View>
 
-            {showAutocomplete && selectedPosition ? (
-              <Animated.View 
-                entering={FadeIn.duration(150)}
-                style={[
-                  styles.autocompleteDropdown,
-                  { 
-                    backgroundColor: theme.backgroundDefault,
-                    borderColor: theme.border,
-                  }
-                ]}
-              >
-                {autocompleteSuggestions.map((player, index) => (
-                  <Pressable
-                    key={player.id}
-                    onPress={() => handleAutocompleteSuggestionPress(player)}
-                    style={[
-                      styles.autocompleteSuggestion,
-                      { 
-                        backgroundColor: theme.backgroundDefault,
-                        borderBottomColor: index < autocompleteSuggestions.length - 1 ? theme.border : 'transparent',
-                      }
-                    ]}
-                  >
-                    <View style={[styles.suggestionRating, { backgroundColor: theme.primary }]}>
-                      <ThemedText type="small" style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 11 }}>
-                        {player.rating}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.suggestionInfo}>
-                      <ThemedText type="body" style={{ fontWeight: '600' }} numberOfLines={1}>
-                        {player.name}
-                      </ThemedText>
-                      <ThemedText type="small" style={{ color: theme.textSecondary }} numberOfLines={1}>
-                        {player.position} {player.club ? `• ${player.club}` : ''}
-                      </ThemedText>
-                    </View>
-                    <View style={[styles.suggestionPosition, { backgroundColor: theme.backgroundSecondary }]}>
-                      <ThemedText type="small" style={{ fontWeight: '600', fontSize: 10 }}>
-                        {player.era === 'Legends' ? 'LEG' : player.positions.join('/')}
-                      </ThemedText>
-                    </View>
-                  </Pressable>
-                ))}
-              </Animated.View>
-            ) : null}
           </View>
 
           {showFilters && selectedPosition && (
@@ -1281,17 +1252,17 @@ useEffect(() => {
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
           >
-            {searchError ? (
+            {teamLoadError ? (
               <View style={styles.selectPrompt}>
                 <ThemedText type="body" style={{ color: theme.error, textAlign: 'center' }}>
-                  {searchError}
+                  {teamLoadError}
                 </ThemedText>
               </View>
             ) : null}
-            {!searchError && isSearching && searchQuery.trim().length >= 2 ? (
+            {!teamLoadError && isTeamLoading ? (
               <View style={styles.selectPrompt}>
                 <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
-                  Searching...
+                  Loading {selectedTeam.label} players...
                 </ThemedText>
               </View>
             ) : null}
@@ -1321,7 +1292,7 @@ useEffect(() => {
             ) : (
               <View style={styles.selectPrompt}>
                 <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
-                  Search for players above
+                  No players loaded
                 </ThemedText>
               </View>
             )}
@@ -1460,13 +1431,6 @@ useEffect(() => {
         </Pressable>
       )}
 
-      <Pressable 
-  onPress={testApi}
-  style={({pressed}) => [{ opacity: pressed ? 0.8 : 1 }]}
->
-  <Text>Test API Connection</Text>
-</Pressable>
-{apiTestResult ? <Text>{apiTestResult}</Text> : null}
     </GestureHandlerRootView>
   );
 }
@@ -1767,6 +1731,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.sm,
     zIndex: 100,
+  },
+  teamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  teamLabel: {
+    width: 60,
+    fontWeight: '500',
+  },
+  teamSelect: {
+    flex: 1,
+    height: 40,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  teamDropdown: {
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: Spacing.sm,
+  },
+  teamOption: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   searchBar: {
     flexDirection: 'row',
