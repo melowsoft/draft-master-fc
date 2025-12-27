@@ -35,7 +35,7 @@ import { fetchLineupById, voteForLineup } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PITCH_HEIGHT = 380;
+const PITCH_HEIGHT = 480;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
