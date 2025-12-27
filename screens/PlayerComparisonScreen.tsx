@@ -1,31 +1,42 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Pressable, 
-  ScrollView,
-  TextInput,
-  Platform,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
-  FadeIn,
-} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    View,
+} from 'react-native';
+import Animated, {
+    FadeIn,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/use-theme';
-import { Spacing, BorderRadius, Colors } from '@/constants/theme';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { Player } from '@/data/types';
-import { players } from '@/data/players';
+import { useTheme } from '@/hooks/use-theme';
+import { searchApiFootballPlayerProfiles } from '@/services/apiFootballService';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+
+  return debouncedValue;
+}
 
 interface StatBarProps {
   label: string;
@@ -246,16 +257,47 @@ export default function PlayerComparisonScreen() {
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [selectingSlot, setSelectingSlot] = useState<1 | 2 | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+  const [apiPlayers, setApiPlayers] = useState<Player[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   const filteredPlayers = useMemo(() => {
-    if (!searchQuery.trim()) return players.slice(0, 30);
-    const query = searchQuery.toLowerCase();
-    return players.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.position.toLowerCase().includes(query) ||
-      p.nationality.toLowerCase().includes(query)
-    ).slice(0, 30);
-  }, [searchQuery]);
+    if (debouncedSearchQuery.trim().length < 2) return [];
+    return apiPlayers.slice(0, 30);
+  }, [apiPlayers, debouncedSearchQuery]);
+
+  useEffect(() => {
+    const query = debouncedSearchQuery.trim();
+    if (!selectingSlot || query.length < 2) {
+      setApiPlayers([]);
+      setSearchError('');
+      setIsSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsSearching(true);
+    setSearchError('');
+
+    searchApiFootballPlayerProfiles({
+      query,
+      league: 'Other',
+      signal: controller.signal,
+    })
+      .then((players) => setApiPlayers(players))
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        setApiPlayers([]);
+        setSearchError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        setIsSearching(false);
+      });
+
+    return () => controller.abort();
+  }, [debouncedSearchQuery, selectingSlot]);
 
   const stats1 = player1 ? getPlayerStats(player1) : null;
   const stats2 = player2 ? getPlayerStats(player2) : null;
@@ -380,6 +422,26 @@ export default function PlayerComparisonScreen() {
             </View>
 
             <View style={styles.playerListContainer}>
+              {searchError ? (
+                <ThemedText type="small" style={{ color: theme.error, marginBottom: Spacing.sm }}>
+                  {searchError}
+                </ThemedText>
+              ) : null}
+              {!searchError && isSearching ? (
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+                  Searching...
+                </ThemedText>
+              ) : null}
+              {!searchError && !isSearching && debouncedSearchQuery.trim().length < 2 ? (
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+                  Type at least 2 characters to search
+                </ThemedText>
+              ) : null}
+              {!searchError && !isSearching && debouncedSearchQuery.trim().length >= 2 && filteredPlayers.length === 0 ? (
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+                  No players found
+                </ThemedText>
+              ) : null}
               {filteredPlayers.map((player, index) => (
                 <PlayerListItem
                   key={player.id}

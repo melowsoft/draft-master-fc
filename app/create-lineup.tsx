@@ -16,6 +16,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    Text,
     TextInput,
     View,
 } from 'react-native';
@@ -33,11 +34,11 @@ import ViewShot from 'react-native-view-shot';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
-import { searchFC25Players } from '@/data/fc25Players';
 import { formations, getDefaultFormation, getFormationById } from '@/data/formations';
 import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, loadUser, updateLineup } from '@/data/storage';
-import { Formation, FormationPosition, Lineup, Player, Position } from '@/data/types';
+import { Formation, FormationPosition, League, Lineup, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
+import { searchApiFootballPlayers, testApiConnection } from '@/services/apiFootballService';
 import { useAuth } from '@/services/authContext';
 import { enterChallenge, fetchUserChallengeEntry, publishLineup } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
@@ -49,6 +50,17 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+
+  return debouncedValue;
 }
 
 const ERA_OPTIONS = ['ALL', 'Modern'];
@@ -465,6 +477,8 @@ export default function CreateLineupScreen() {
 
   const challengeId: string | undefined = challengeIdParam || editLineup?.challengeId;
   const isChallengeFlow = !!challengeId && isUuid(challengeId) && isSupabaseConfigured();
+
+  const [apiTestResult, setApiTestResult] = useState<string>('');
   
   const [lineupName, setLineupName] = useState(editLineup?.name || 'My Lineup');
   const [selectedFormation, setSelectedFormation] = useState<Formation>(
@@ -475,6 +489,7 @@ export default function CreateLineupScreen() {
   );
   const [selectedPosition, setSelectedPosition] = useState<FormationPosition | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
   const [eraFilter, setEraFilter] = useState<string>('ALL');
   const [leagueFilter, setLeagueFilter] = useState<string>('ALL');
@@ -490,6 +505,9 @@ export default function CreateLineupScreen() {
   const [showCreatePlayerModal, setShowCreatePlayerModal] = useState(false);
   const [createPlayerForm, setCreatePlayerForm] = useState({ name: '', position: 'ST' as Position, rating: 75 });
   const searchInputRef = useRef<TextInput>(null);
+  const [apiPlayers, setApiPlayers] = useState<Player[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   const pitchWidth = SCREEN_WIDTH - Spacing.xl * 2;
 
@@ -525,6 +543,55 @@ export default function CreateLineupScreen() {
     };
     loadData();
   }, []);
+
+useEffect(() => {
+  // Optionally test on mount, or create a button for it
+   testApi();
+}, []);
+
+  useEffect(() => {
+    const query = debouncedSearchQuery.trim();
+    if (query.length < 2) {
+      setApiPlayers([]);
+      setIsSearching(false);
+      setSearchError('');
+      return;
+    }
+
+    const positionHint =
+      selectedPosition?.position || (positionFilter !== 'ALL' ? (positionFilter as Position) : undefined);
+    const league = (leagueFilter !== 'ALL' ? leagueFilter : 'Other') as League;
+
+    const controller = new AbortController();
+
+    setIsSearching(true);
+    setSearchError('');
+
+    searchApiFootballPlayers({
+      query,
+      league,
+      positionHint,
+      signal: controller.signal,
+    })
+      .then((players) => setApiPlayers(players))
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        setApiPlayers([]);
+        setSearchError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        setIsSearching(false);
+      });
+
+    return () => controller.abort();
+  }, [debouncedSearchQuery, leagueFilter, positionFilter, selectedPosition?.position]);
+
+  const testApi = async () => {
+  console.log('🧪 Running API test...');
+  const result = await testApiConnection();
+  setApiTestResult(result.success ? '✅ API Connected!' : '❌ API Failed');
+};
 
   const handleCreateCustomFormation = () => {
     router.push('/custom-formation');
@@ -622,14 +689,17 @@ export default function CreateLineupScreen() {
   const autocompleteSuggestions = useMemo(() => {
     if (searchQuery.length < 2) return [];
     const position = selectedPosition ? selectedPosition.position : undefined;
-    const fcResults = searchFC25Players(searchQuery, { position });
     const customResults = customPlayers.filter(p => {
       const matchesQuery = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPosition = !position || p.position === position || p.positions?.includes(position);
       return matchesQuery && matchesPosition;
     });
-    return [...customResults, ...fcResults].slice(0, 8);
-  }, [searchQuery, selectedPosition, customPlayers]);
+    const apiResults = apiPlayers.filter((p) => {
+      const matchesPosition = !position || p.position === position || p.positions?.includes(position);
+      return matchesPosition;
+    });
+    return [...customResults, ...apiResults].slice(0, 8);
+  }, [searchQuery, selectedPosition, customPlayers, apiPlayers]);
 
   const showAutocomplete = isSearchFocused && searchQuery.length >= 2 && autocompleteSuggestions.length > 0;
 
@@ -903,14 +973,16 @@ export default function CreateLineupScreen() {
   const filteredPlayers = useMemo(() => {
     const position = selectedPosition ? selectedPosition.position : (positionFilter !== 'ALL' ? positionFilter : undefined);
     const league = leagueFilter !== 'ALL' ? leagueFilter : undefined;
-    
-    const fcResults = searchFC25Players(searchQuery, {
-      position: position as Position | undefined,
-      league: league as any,
-    });
-    
+
     // Include custom players in the list
     const customResults = customPlayers.filter(p => {
+      const matchesQuery = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPosition = !position ? true : (p.position === position || p.positions?.includes(position as Position));
+      const matchesLeague = !league || p.league === league || p.league === 'Other';
+      return matchesQuery && matchesPosition && matchesLeague;
+    });
+
+    const apiResults = apiPlayers.filter((p) => {
       const matchesQuery = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPosition = !position ? true : (p.position === position || p.positions?.includes(position as Position));
       const matchesLeague = !league || p.league === league || p.league === 'Other';
@@ -919,8 +991,8 @@ export default function CreateLineupScreen() {
     
     // Show max 11 players initially (one full lineup), more when filtering
     const limit = hasActiveFilters ? 50 : 11;
-    return [...customResults, ...fcResults].slice(0, limit);
-  }, [searchQuery, selectedPosition, positionFilter, leagueFilter, hasActiveFilters, customPlayers]);
+    return [...customResults, ...apiResults].slice(0, limit);
+  }, [searchQuery, selectedPosition, positionFilter, leagueFilter, hasActiveFilters, customPlayers, apiPlayers]);
 
   const alreadySelectedIds = new Set(Object.values(selectedPlayers).map(p => p.id));
 
@@ -956,6 +1028,8 @@ export default function CreateLineupScreen() {
             </Pressable>
           </View>
         </View>
+
+        
 
         <ScrollView 
           ref={scrollViewRef}
@@ -1207,6 +1281,20 @@ export default function CreateLineupScreen() {
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
           >
+            {searchError ? (
+              <View style={styles.selectPrompt}>
+                <ThemedText type="body" style={{ color: theme.error, textAlign: 'center' }}>
+                  {searchError}
+                </ThemedText>
+              </View>
+            ) : null}
+            {!searchError && isSearching && searchQuery.trim().length >= 2 ? (
+              <View style={styles.selectPrompt}>
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+                  Searching...
+                </ThemedText>
+              </View>
+            ) : null}
             {filteredPlayers.length > 0 ? (
               filteredPlayers.map((player, index) => (
                 <Animated.View key={player.id} entering={FadeIn.delay(Math.min(index * 15, 300))}>
@@ -1371,6 +1459,14 @@ export default function CreateLineupScreen() {
           </Pressable>
         </Pressable>
       )}
+
+      <Pressable 
+  onPress={testApi}
+  style={({pressed}) => [{ opacity: pressed ? 0.8 : 1 }]}
+>
+  <Text>Test API Connection</Text>
+</Pressable>
+{apiTestResult ? <Text>{apiTestResult}</Text> : null}
     </GestureHandlerRootView>
   );
 }
