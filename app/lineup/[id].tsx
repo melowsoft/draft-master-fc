@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
@@ -338,31 +339,35 @@ export default function LineupDetailScreen() {
               >
                 <View style={[styles.playerAvatar, { width: avatarSize, height: avatarSize, backgroundColor: '#FFD700' }]}>
                   {player ? (
-                    <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                      <ThemedText 
-                        type="small" 
-                        style={{ 
-                          fontWeight: '700',
-                          color: Colors.light.pitchGreenDark,
-                          fontSize: 18,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {player.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                      </ThemedText>
-                      <ThemedText 
-                        type="small" 
-                        style={{ 
-                          fontWeight: '600',
-                          color: Colors.light.pitchGreenDark,
-                          fontSize: 10,
-                          marginTop: 2,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {player.rating}
-                      </ThemedText>
-                    </View>
+                    player.image ? (
+                      <Image source={{ uri: player.image }} style={styles.playerPhoto} contentFit="cover" />
+                    ) : (
+                      <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                        <ThemedText 
+                          type="small" 
+                          style={{ 
+                            fontWeight: '700',
+                            color: Colors.light.pitchGreenDark,
+                            fontSize: 18,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {player.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                        </ThemedText>
+                        <ThemedText 
+                          type="small" 
+                          style={{ 
+                            fontWeight: '600',
+                            color: Colors.light.pitchGreenDark,
+                            fontSize: 10,
+                            marginTop: 2,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {player.rating}
+                        </ThemedText>
+                      </View>
+                    )
                   ) : (
                     <ThemedText 
                       type="small" 
@@ -716,6 +721,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
+  },
+  playerPhoto: {
+    width: '100%',
+    height: '100%',
   },
   playerLabel: {
     marginTop: Spacing.xs,
