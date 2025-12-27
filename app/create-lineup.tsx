@@ -67,6 +67,7 @@ const POSITION_OPTIONS = ['ALL', 'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LM
 const LEAGUE_OPTIONS = ['ALL', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'Saudi Pro League', 'Other'];
 
 const TEAM_OPTIONS = [
+  { id: 'none', label: 'None', apiName: '' },
   { id: 'arsenal', label: 'Arsenal', apiName: 'Arsenal' },
   { id: 'chelsea', label: 'Chelsea', apiName: 'Chelsea' },
   { id: 'liverpool', label: 'Liverpool', apiName: 'Liverpool' },
@@ -558,6 +559,13 @@ export default function CreateLineupScreen() {
   }, []);
 
   useEffect(() => {
+    if (selectedTeamId === 'none') {
+      setTeamPlayers([]);
+      setIsTeamLoading(false);
+      setTeamLoadError('');
+      return;
+    }
+
     const controller = new AbortController();
     setIsTeamLoading(true);
     setTeamLoadError('');
@@ -578,7 +586,7 @@ export default function CreateLineupScreen() {
       });
 
     return () => controller.abort();
-  }, [selectedTeam.apiName]);
+  }, [selectedTeam.apiName, selectedTeamId]);
 
   const handleCreateCustomFormation = () => {
     router.push('/custom-formation');
@@ -928,6 +936,7 @@ export default function CreateLineupScreen() {
     setEraFilter('ALL');
     setLeagueFilter('ALL');
     setSearchQuery('');
+    setSelectedTeamId('none');
   };
 
   const hasActiveFilters = positionFilter !== 'ALL' || eraFilter !== 'ALL' || leagueFilter !== 'ALL' || searchQuery !== '' || selectedPosition !== null;
