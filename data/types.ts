@@ -8,7 +8,7 @@ export type League =
   | 'Premier League' | 'La Liga' | 'Serie A' | 'Bundesliga' 
   | 'Ligue 1' | 'Saudi Pro League' | 'MLS' | 'Retired' | 'Other';
 
-export type PitchThemeId = 'green' | 'blue' | 'classic' | 'dark';
+export type PitchThemeId = 'original' | 'green' | 'blue' | 'classic' | 'dark';
 
 export interface PlayerStats {
   pace: number;

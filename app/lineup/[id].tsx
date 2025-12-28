@@ -39,6 +39,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 480;
 
 const PITCH_THEMES: Record<PitchThemeId, [string, string]> = {
+  original: [Colors.light.pitchGreen, Colors.light.pitchGreen],
   green: ['#a7d9b9', '#8bc9a6'],
   blue: ['#93c5fd', '#60a5fa'],
   classic: ['#d4d4d4', '#a3a3a3'],
@@ -301,7 +302,7 @@ export default function LineupDetailScreen() {
     const fromFormation = (lineup.formation as any)?.pitchThemeId as PitchThemeId | undefined;
     const candidate = fromLineup || fromFormation;
     if (candidate && candidate in PITCH_THEMES) return candidate;
-    return 'green';
+    return 'original';
   })();
 
   return (
@@ -326,7 +327,14 @@ export default function LineupDetailScreen() {
           styles.pitch,
         ]}>
           <LinearGradient
-            colors={PITCH_THEMES[pitchThemeId]}
+            colors={
+              pitchThemeId === 'original'
+                ? [
+                    isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen,
+                    isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen,
+                  ]
+                : PITCH_THEMES[pitchThemeId]
+            }
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject}

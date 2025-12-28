@@ -79,6 +79,7 @@ const TEAM_OPTIONS = [
 ] as const;
 
 const PITCH_THEMES: Record<PitchThemeId, { label: string; colors: [string, string] }> = {
+  original: { label: 'Original', colors: [Colors.light.pitchGreen, Colors.light.pitchGreen] },
   green: { label: 'Green', colors: ['#a7d9b9', '#8bc9a6'] },
   blue: { label: 'Blue', colors: ['#93c5fd', '#60a5fa'] },
   classic: { label: 'Classic', colors: ['#d4d4d4', '#a3a3a3'] },
@@ -318,7 +319,7 @@ function PositionMarker({
     transform: [{ scale: pulseScale.value }],
   }));
 
-  const circleSize = 36;
+  const circleSize = 45;
   const containerWidth = 70;
   const containerHeight = 54;
   const left = (position.x / 100) * pitchWidth - containerWidth / 2;
@@ -526,7 +527,7 @@ function DraggablePlayerCard({
 }
 
 export default function CreateLineupScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, profile } = useAuth();
@@ -566,7 +567,7 @@ export default function CreateLineupScreen() {
   const [pitchThemeId, setPitchThemeId] = useState<PitchThemeId>(() => {
     const fromLineup = editLineup?.pitchThemeId as PitchThemeId | undefined;
     const fromFormation = (editLineup?.formation as any)?.pitchThemeId as PitchThemeId | undefined;
-    return fromLineup || fromFormation || 'green';
+    return fromLineup || fromFormation || 'original';
   });
   const [selectedPosition, setSelectedPosition] = useState<FormationPosition | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1115,7 +1116,14 @@ export default function CreateLineupScreen() {
             ]}
           >
             <LinearGradient
-              colors={PITCH_THEMES[pitchThemeId].colors}
+              colors={
+                pitchThemeId === 'original'
+                  ? [
+                      isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen,
+                      isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen,
+                    ]
+                  : PITCH_THEMES[pitchThemeId].colors
+              }
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={StyleSheet.absoluteFillObject}
@@ -1738,7 +1746,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   playerCircle: {
-    borderRadius: 18,
+    borderRadius: 22.5,
     backgroundColor: '#8B0000',
     borderWidth: 2,
     borderColor: '#FFD700',
