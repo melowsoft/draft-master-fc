@@ -4,10 +4,12 @@ const pitchGreen = "#1B5E20";
 const pitchGreenLight = "#2E7D32";
 const gold = "#FFD700";
 
+// Add textTertiary to both light and dark themes
 export const Colors = {
   light: {
     text: "#212121",
     textSecondary: "#757575",
+    textTertiary: "#BDBDBD", // Add this - slightly lighter than textSecondary
     buttonText: "#FFFFFF",
     icon: "#687076",
     tabIconDefault: "#687076",
@@ -54,6 +56,7 @@ export const Colors = {
   dark: {
     text: "#ECEDEE",
     textSecondary: "#9BA1A6",
+    textTertiary: "#6D7378", // Add this - slightly darker than textSecondary
     buttonText: "#FFFFFF",
     icon: "#9BA1A6",
     tabIconDefault: "#9BA1A6",
