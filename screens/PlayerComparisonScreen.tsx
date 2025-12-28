@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -460,9 +461,32 @@ export default function PlayerComparisonScreen() {
   const [activeTab, setActiveTab] = useState<'overall' | 'chart'>('overall');
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
-  const [apiPlayers, setApiPlayers] = useState<Player[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState('');
+
+  const trimmedProfilesQuery = debouncedSearchQuery.trim();
+  const profilesQuery = useQuery({
+    queryKey: ['api-football', 'player-profiles', 'Other', trimmedProfilesQuery.toLowerCase()],
+    enabled: Boolean(selectingSlot) && trimmedProfilesQuery.length >= 2,
+    queryFn: ({ signal }) =>
+      searchApiFootballPlayerProfiles({
+        query: trimmedProfilesQuery,
+        league: 'Other',
+        signal,
+      }),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  const apiPlayers =
+    selectingSlot && trimmedProfilesQuery.length >= 2 ? (profilesQuery.data ?? []) : [];
+  const isSearching = selectingSlot && trimmedProfilesQuery.length >= 2 ? profilesQuery.isFetching : false;
+  const searchError =
+    selectingSlot && trimmedProfilesQuery.length >= 2
+      ? profilesQuery.error instanceof Error
+        ? profilesQuery.error.message
+        : profilesQuery.error
+          ? String(profilesQuery.error)
+          : ''
+      : '';
 
   const candidatePlayers = useMemo(() => {
     const combined = [...defaultPlayers, ...apiPlayers];
@@ -510,38 +534,6 @@ export default function PlayerComparisonScreen() {
 
     return scored.slice(0, 10).map((x) => x.player);
   }, [candidatePlayers, debouncedSearchQuery]);
-
-  useEffect(() => {
-    const query = debouncedSearchQuery.trim();
-    if (!selectingSlot || query.length < 2) {
-      setApiPlayers([]);
-      setSearchError('');
-      setIsSearching(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setIsSearching(true);
-    setSearchError('');
-
-    searchApiFootballPlayerProfiles({
-      query,
-      league: 'Other',
-      signal: controller.signal,
-    })
-      .then((players) => setApiPlayers(players))
-      .catch((e) => {
-        if (controller.signal.aborted) return;
-        setApiPlayers([]);
-        setSearchError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (controller.signal.aborted) return;
-        setIsSearching(false);
-      });
-
-    return () => controller.abort();
-  }, [debouncedSearchQuery, selectingSlot]);
 
   const stats1 = player1 ? getPlayerStats(player1) : null;
   const stats2 = player2 ? getPlayerStats(player2) : null;

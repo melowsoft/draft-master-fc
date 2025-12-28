@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -589,14 +590,32 @@ export default function CreateLineupScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<(typeof TEAM_OPTIONS)[number]['id']>('arsenal');
   const [showTeamDropdown, setShowTeamDropdown] = useState(false);
-  const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
-  const [isTeamLoading, setIsTeamLoading] = useState(false);
-  const [teamLoadError, setTeamLoadError] = useState('');
 
   const selectedTeam = useMemo(
     () => TEAM_OPTIONS.find((t) => t.id === selectedTeamId) ?? TEAM_OPTIONS[0],
     [selectedTeamId]
   );
+
+  const teamPlayersQuery = useQuery({
+    queryKey: ['api-football', 'team-players', { teamName: selectedTeam.apiName }],
+    enabled: selectedTeamId !== 'none' && Boolean(selectedTeam.apiName),
+    queryFn: ({ signal }) =>
+      getApiFootballPlayersByTeamName({
+        teamName: selectedTeam.apiName,
+        signal,
+      }),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const isTeamLoading = selectedTeamId !== 'none' ? teamPlayersQuery.isFetching : false;
+  const teamLoadError =
+    selectedTeamId !== 'none'
+      ? teamPlayersQuery.error instanceof Error
+        ? teamPlayersQuery.error.message
+        : teamPlayersQuery.error
+          ? String(teamPlayersQuery.error)
+          : ''
+      : '';
 
   const pitchWidth = SCREEN_WIDTH - Spacing.xl * 2;
 
@@ -632,37 +651,6 @@ export default function CreateLineupScreen() {
     };
     loadData();
   }, []);
-
-  useEffect(() => {
-    if (selectedTeamId === 'none') {
-      setTeamPlayers([]);
-      setIsTeamLoading(false);
-      setTeamLoadError('');
-      return;
-    }
-
-    const controller = new AbortController();
-    setTeamPlayers([]);
-    setIsTeamLoading(true);
-    setTeamLoadError('');
-
-    getApiFootballPlayersByTeamName({
-      teamName: selectedTeam.apiName,
-      signal: controller.signal,
-    })
-      .then((players) => setTeamPlayers(players))
-      .catch((e) => {
-        if (controller.signal.aborted) return;
-        setTeamPlayers([]);
-        setTeamLoadError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (controller.signal.aborted) return;
-        setIsTeamLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [selectedTeam.apiName, selectedTeamId]);
 
   const handleCreateCustomFormation = () => {
     router.push('/custom-formation');
@@ -1017,7 +1005,6 @@ export default function CreateLineupScreen() {
     setSearchQuery('');
     setSelectedTeamId('none');
     setShowTeamDropdown(false);
-    setTeamLoadError('');
     Keyboard.dismiss();
   };
 
@@ -1033,14 +1020,14 @@ export default function CreateLineupScreen() {
     const combined =
       selectedTeamId === 'none'
         ? [...defaultPlayers, ...customPlayers]
-        : teamPlayers;
+        : (teamPlayersQuery.data ?? []);
     const seen = new Set<string>();
     return combined.filter((p) => {
       if (seen.has(p.id)) return false;
       seen.add(p.id);
       return true;
     });
-  }, [customPlayers, selectedTeamId, teamPlayers]);
+  }, [customPlayers, selectedTeamId, teamPlayersQuery.data]);
 
   const filteredPlayers = useMemo(() => {
     const normalizeText = (text: string) =>

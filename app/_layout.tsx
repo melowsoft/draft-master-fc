@@ -1,12 +1,25 @@
 import { ColorSchemeProvider } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthProvider, useAuth } from '@/services/authContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 void SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
+  },
+});
 
 function RootLayoutNav() {
   const { theme } = useTheme();
@@ -83,9 +96,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <ColorSchemeProvider>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </QueryClientProvider>
     </ColorSchemeProvider>
   );
 }
