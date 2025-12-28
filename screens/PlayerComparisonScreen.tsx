@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Platform,
     Pressable,
     ScrollView,
@@ -28,7 +29,7 @@ import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { players as defaultPlayers } from '@/data/players';
 import { Player } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
-import { searchApiFootballPlayerProfiles } from '@/services/apiFootballService';
+import { getApiFootballPlayerRadarStats, searchApiFootballPlayerProfiles } from '@/services/apiFootballService';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -538,6 +539,36 @@ export default function PlayerComparisonScreen() {
   const stats1 = player1 ? getPlayerStats(player1) : null;
   const stats2 = player2 ? getPlayerStats(player2) : null;
 
+  const player1ApiId = useMemo(() => {
+    const raw = String(player1?.id || '').trim();
+    if (!raw.startsWith('af_')) return null;
+    const parsed = Number(raw.slice(3));
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [player1?.id]);
+
+  const player2ApiId = useMemo(() => {
+    const raw = String(player2?.id || '').trim();
+    if (!raw.startsWith('af_')) return null;
+    const parsed = Number(raw.slice(3));
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [player2?.id]);
+
+  const player1RadarQuery = useQuery({
+    queryKey: ['api-football', 'player-radar', player1ApiId],
+    enabled: activeTab === 'chart' && player1ApiId !== null && Boolean(player2),
+    queryFn: ({ signal }) => getApiFootballPlayerRadarStats({ playerApiId: player1ApiId as number, signal }),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  const player2RadarQuery = useQuery({
+    queryKey: ['api-football', 'player-radar', player2ApiId],
+    enabled: activeTab === 'chart' && player2ApiId !== null && Boolean(player1),
+    queryFn: ({ signal }) => getApiFootballPlayerRadarStats({ playerApiId: player2ApiId as number, signal }),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
   const handleSelectPlayer = (player: Player) => {
     if (selectingSlot === 1) {
       setPlayer1(player);
@@ -647,7 +678,61 @@ export default function PlayerComparisonScreen() {
                 <ThemedText type="h4">Radar Comparison</ThemedText>
               </View>
 
-              <RadarChart />
+              {showComparison ? (
+                player1ApiId !== null && player2ApiId !== null ? (
+                  player1RadarQuery.isFetching || player2RadarQuery.isFetching ? (
+                    <View style={styles.chartLoading}>
+                      <ActivityIndicator color={theme.textSecondary} />
+                      <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+                        Loading player stats…
+                      </ThemedText>
+                    </View>
+                  ) : player1RadarQuery.data && player2RadarQuery.data ? (
+                    <>
+                      <View style={[styles.comparisonLegend, { marginBottom: Spacing.lg }]}>
+                        <View style={styles.legendItem}>
+                          <View style={[styles.legendDot, { backgroundColor: Colors.light.gold }]} />
+                          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                            {player1?.name.split(' ').pop()}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.legendItem}>
+                          <View style={[styles.legendDot, { backgroundColor: Colors.light.pitchGreen }]} />
+                          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                            {player2?.name.split(' ').pop()}
+                          </ThemedText>
+                        </View>
+                      </View>
+
+                      <RadarChart
+                        player1Label={player1?.name.split(' ').pop() || 'Player 1'}
+                        player2Label={player2?.name.split(' ').pop() || 'Player 2'}
+                        player1Color={Colors.light.gold}
+                        player2Color={Colors.light.pitchGreen}
+                        stats1={player1RadarQuery.data}
+                        stats2={player2RadarQuery.data}
+                      />
+                    </>
+                  ) : (
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      {[
+                        player1RadarQuery.error instanceof Error ? player1RadarQuery.error.message : null,
+                        player2RadarQuery.error instanceof Error ? player2RadarQuery.error.message : null,
+                      ]
+                        .filter(Boolean)
+                        .join('\n') || 'Unable to load chart data.'}
+                    </ThemedText>
+                  )
+                ) : (
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Chart data is only available for API-Football players.
+                  </ThemedText>
+                )
+              ) : (
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Pick two players to see the radar chart.
+                </ThemedText>
+              )}
             </View>
           </Animated.View>
         )}
@@ -1046,6 +1131,11 @@ const styles = StyleSheet.create({
   chartCard: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
+  },
+  chartLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xl,
   },
   chartRow: {
     flexDirection: 'row',

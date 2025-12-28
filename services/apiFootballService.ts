@@ -46,6 +46,46 @@ type ApiFootballTeamSearchResponse = {
   };
 };
 
+export type ApiFootballPlayerRadarStats = {
+  duelsWonPct: number | null;
+  possessionsWon: number | null;
+  progressiveCarries: number | null;
+  forwardPasses: number | null;
+  forwardPassPct: number | null;
+  keyPasses: number | null;
+  progressivePasses: number | null;
+};
+
+type ApiFootballPlayerStatsEntry = {
+  games?: {
+    minutes?: number;
+    appearences?: number;
+  };
+  duels?: {
+    total?: number;
+    won?: number;
+  };
+  tackles?: {
+    total?: number;
+    interceptions?: number;
+  };
+  dribbles?: {
+    attempts?: number;
+    success?: number;
+    past?: number;
+  };
+  passes?: {
+    total?: number;
+    key?: number;
+    accuracy?: string | number;
+  };
+};
+
+type ApiFootballPlayerStatsResponse = {
+  player?: { id?: number };
+  statistics?: ApiFootballPlayerStatsEntry[];
+};
+
 const baseUrl = String(API_FOOTBALL_CONFIG.BASE_URL || 'https://v3.football.api-sports.io')
   .replace(/\/+$/, '')
   .trim();
@@ -188,6 +228,21 @@ function ratingFromApiFootball(gamesRating: string | undefined): number {
   return Math.max(1, Math.min(99, scaled));
 }
 
+function numberFromUnknown(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const asNumber = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isFinite(asNumber)) return null;
+  return asNumber;
+}
+
+function pct(numerator: number | null, denominator: number | null): number | null {
+  if (numerator === null || denominator === null) return null;
+  if (denominator <= 0) return null;
+  const value = (numerator / denominator) * 100;
+  if (!Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(100, value));
+}
+
 async function callApiFootball<T>({
   endpoint,
   params,
@@ -254,15 +309,6 @@ async function resolveTeamIdByName(teamName: string, signal?: AbortSignal): Prom
 
   teamIdCache.set(key, best.id);
   return best.id;
-}
-
-export async function testApiConnection(): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  try {
-    const data = await callApiFootball<{ account?: unknown }>({ endpoint: '/status' });
-    return { success: true, data };
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) };
-  }
 }
 
 export async function searchApiFootballPlayers({
@@ -475,4 +521,74 @@ export async function searchApiFootballPlayerProfiles({
 
   unique.sort((a, b) => b.rating - a.rating);
   return unique;
+}
+
+export async function getApiFootballPlayerRadarStats({
+  playerApiId,
+  signal,
+}: {
+  playerApiId: number;
+  signal?: AbortSignal;
+}): Promise<ApiFootballPlayerRadarStats> {
+  if (!isApiFootballConfigured()) {
+    throw new Error(getApiFootballConfigWarning());
+  }
+
+  const season = getSeasonYear();
+  const response = await callApiFootball<ApiFootballPlayerStatsResponse[]>({
+    endpoint: '/players',
+    params: { season: String(season), id: String(playerApiId) },
+    signal,
+  });
+
+  const entry = (Array.isArray(response) ? response : [])[0];
+  const statsEntries = Array.isArray(entry?.statistics) ? entry.statistics : [];
+
+  const best = statsEntries.reduce<ApiFootballPlayerStatsEntry | null>((acc, cur) => {
+    if (!acc) return cur;
+    const accMinutes = numberFromUnknown(acc?.games?.minutes) ?? 0;
+    const curMinutes = numberFromUnknown(cur?.games?.minutes) ?? 0;
+    if (curMinutes !== accMinutes) return curMinutes > accMinutes ? cur : acc;
+
+    const accApps = numberFromUnknown(acc?.games?.appearences) ?? 0;
+    const curApps = numberFromUnknown(cur?.games?.appearences) ?? 0;
+    return curApps > accApps ? cur : acc;
+  }, null);
+
+  const duelsTotal = numberFromUnknown(best?.duels?.total);
+  const duelsWon = numberFromUnknown(best?.duels?.won);
+
+  const tacklesTotal = numberFromUnknown(best?.tackles?.total);
+  const tacklesInterceptions = numberFromUnknown(best?.tackles?.interceptions);
+
+  const dribblesSuccess = numberFromUnknown(best?.dribbles?.success);
+  const dribblesPast = numberFromUnknown(best?.dribbles?.past);
+
+  const passesTotal = numberFromUnknown(best?.passes?.total);
+  const passesKey = numberFromUnknown(best?.passes?.key);
+  const passesAccuracy = numberFromUnknown(best?.passes?.accuracy);
+
+  const possessionsWonParts = [duelsWon, tacklesTotal, tacklesInterceptions].filter(
+    (v): v is number => typeof v === 'number' && Number.isFinite(v)
+  );
+
+  const possessionsWon = possessionsWonParts.length
+    ? possessionsWonParts.reduce((sum, v) => sum + v, 0)
+    : null;
+
+  const progressiveCarries = dribblesSuccess ?? dribblesPast ?? null;
+  const forwardPasses = passesTotal ?? null;
+  const forwardPassPct = passesAccuracy !== null ? Math.max(0, Math.min(100, passesAccuracy)) : null;
+  const progressivePasses =
+    passesTotal !== null && forwardPassPct !== null ? (passesTotal * forwardPassPct) / 100 : null;
+
+  return {
+    duelsWonPct: pct(duelsWon, duelsTotal),
+    possessionsWon,
+    progressiveCarries,
+    forwardPasses,
+    forwardPassPct,
+    keyPasses: passesKey ?? null,
+    progressivePasses,
+  };
 }
