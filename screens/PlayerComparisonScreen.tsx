@@ -185,7 +185,7 @@ function PlayerCard({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[animatedStyle]}
+        style={[styles.selectedPlayerContainer, animatedStyle]}
       >
         <View style={[
           styles.playerSlot, 
@@ -456,6 +456,7 @@ export default function PlayerComparisonScreen() {
   const [player1, setPlayer1] = useState<Player | null>(null);
   const [player2, setPlayer2] = useState<Player | null>(null);
   const [selectingSlot, setSelectingSlot] = useState<1 | 2 | null>(null);
+  const [activeTab, setActiveTab] = useState<'overall' | 'chart'>('overall');
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const [apiPlayers, setApiPlayers] = useState<Player[]>([]);
@@ -552,9 +553,16 @@ export default function PlayerComparisonScreen() {
     }
     setSelectingSlot(null);
     setSearchQuery('');
+    setActiveTab('overall');
   };
 
   const showComparison = player1 && player2 && stats1 && stats2;
+
+  useEffect(() => {
+    if (!showComparison && activeTab !== 'overall') {
+      setActiveTab('overall');
+    }
+  }, [activeTab, showComparison]);
 
   return (
     <ThemedView style={styles.container}>
@@ -575,6 +583,50 @@ export default function PlayerComparisonScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xl }}
         showsVerticalScrollIndicator={false}
       >
+        <View
+          style={[
+            styles.comparisonSection,
+            { marginTop: Spacing.xl, marginBottom: showComparison ? Spacing.lg : Spacing.xl },
+          ]}
+        >
+          <View style={[styles.subTabs, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+            <Pressable
+              disabled={!showComparison}
+              onPress={() => setActiveTab('overall')}
+              style={[
+                styles.subTab,
+                activeTab === 'overall' ? styles.subTabActive : null,
+                { backgroundColor: activeTab === 'overall' ? theme.background : 'transparent' },
+                !showComparison ? { opacity: 0.6 } : null,
+              ]}
+            >
+              <ThemedText
+                type="small"
+                style={{ color: activeTab === 'overall' ? theme.text : theme.textSecondary, fontWeight: '700' }}
+              >
+                Overall
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              disabled={!showComparison}
+              onPress={() => setActiveTab('chart')}
+              style={[
+                styles.subTab,
+                activeTab === 'chart' ? styles.subTabActive : null,
+                { backgroundColor: activeTab === 'chart' ? theme.background : 'transparent' },
+                !showComparison ? { opacity: 0.6 } : null,
+              ]}
+            >
+              <ThemedText
+                type="small"
+                style={{ color: activeTab === 'chart' ? theme.text : theme.textSecondary, fontWeight: '700' }}
+              >
+                Chart
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+
         <View style={styles.playersRow}>
           <PlayerCard 
             player={player1} 
@@ -599,7 +651,7 @@ export default function PlayerComparisonScreen() {
           />
         </View>
 
-        {showComparison && (
+        {showComparison && activeTab === 'overall' && (
           <Animated.View entering={FadeIn} style={styles.comparisonSection}>
             <View style={[styles.comparisonHeader, { borderBottomColor: theme.border }]}>
               <ThemedText type="h4">Stats Comparison</ThemedText>
@@ -932,6 +984,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.xl,
   },
+  subTabs: {
+    height: 44,
+    borderRadius: BorderRadius.full,
+    padding: 4,
+    flexDirection: 'row',
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
+  },
+  subTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.full,
+  },
+  subTabActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
   comparisonHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -958,6 +1031,46 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     marginBottom: Spacing.xl,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: Spacing.md,
+    marginBottom: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  chartCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+  },
+  chartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  chartRowSpacer: {
+    marginTop: Spacing.md,
+  },
+  chartLabel: {
+    width: 78,
+    fontWeight: '600',
+  },
+  chartBars: {
+    flex: 1,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: Spacing.md,
+  },
+  chartBar: {
+    width: 18,
+    borderRadius: 6,
+  },
+  chartValues: {
+    width: 54,
+    alignItems: 'flex-end',
+    gap: 2,
   },
   statRow: {
     marginBottom: Spacing.lg,
