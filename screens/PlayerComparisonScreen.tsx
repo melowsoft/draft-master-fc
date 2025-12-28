@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { players as defaultPlayers } from '@/data/players';
 import { Player } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import { searchApiFootballPlayerProfiles } from '@/services/apiFootballService';
@@ -461,10 +462,52 @@ export default function PlayerComparisonScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
 
+  const candidatePlayers = useMemo(() => {
+    const combined = [...defaultPlayers, ...apiPlayers];
+    const seen = new Set<string>();
+    return combined.filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [apiPlayers]);
+
   const filteredPlayers = useMemo(() => {
-    if (debouncedSearchQuery.trim().length < 2) return [];
-    return apiPlayers.slice(0, 30);
-  }, [apiPlayers, debouncedSearchQuery]);
+    const normalizeText = (text: string) =>
+      text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    const scoreNameMatch = (playerName: string, queryText: string) => {
+      const name = normalizeText(playerName);
+      const query = normalizeText(queryText);
+      if (!query) return 0;
+      if (name === query) return 100;
+      if (name.startsWith(query)) return 90;
+
+      const tokens = name.split(/\s+/).filter(Boolean);
+      if (tokens.some((t) => t.startsWith(query))) return 85;
+      if (name.includes(query)) return 75;
+
+      const queryTokens = query.split(/\s+/).filter(Boolean);
+      if (queryTokens.length > 1 && queryTokens.every((t) => name.includes(t))) return 65;
+      if (query.length >= 3 && tokens.some((t) => t.includes(query))) return 55;
+      return 0;
+    };
+
+    const query = debouncedSearchQuery.trim();
+    if (query.length < 2) return [];
+
+    const scored = candidatePlayers
+      .map((player) => ({ player, score: scoreNameMatch(player.name, query) }))
+      .filter((x) => x.score > 0);
+
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.player.rating !== a.player.rating) return b.player.rating - a.player.rating;
+      return a.player.name.localeCompare(b.player.name);
+    });
+
+    return scored.slice(0, 10).map((x) => x.player);
+  }, [candidatePlayers, debouncedSearchQuery]);
 
   useEffect(() => {
     const query = debouncedSearchQuery.trim();
@@ -696,7 +739,7 @@ export default function PlayerComparisonScreen() {
                   <View style={[styles.emptyState, { backgroundColor: theme.backgroundTertiary }]}>
                     <Feather name="users" size={32} color={theme.textTertiary} />
                     <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
-                      No players found for "{debouncedSearchQuery}"
+                      No players found for “{debouncedSearchQuery}”
                     </ThemedText>
                     <ThemedText type="small" style={{ color: theme.textTertiary, marginTop: Spacing.xs, textAlign: 'center' }}>
                       Try a different search term
