@@ -642,6 +642,7 @@ export default function CreateLineupScreen() {
     }
 
     const controller = new AbortController();
+    setTeamPlayers([]);
     setIsTeamLoading(true);
     setTeamLoadError('');
 
@@ -1029,14 +1030,17 @@ export default function CreateLineupScreen() {
     selectedTeamId !== 'none';
 
   const allPlayers = useMemo(() => {
-    const combined = [...defaultPlayers, ...customPlayers, ...teamPlayers];
+    const combined =
+      selectedTeamId === 'none'
+        ? [...defaultPlayers, ...customPlayers]
+        : teamPlayers;
     const seen = new Set<string>();
     return combined.filter((p) => {
       if (seen.has(p.id)) return false;
       seen.add(p.id);
       return true;
     });
-  }, [customPlayers, teamPlayers]);
+  }, [customPlayers, selectedTeamId, teamPlayers]);
 
   const filteredPlayers = useMemo(() => {
     const normalizeText = (text: string) =>
