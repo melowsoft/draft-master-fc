@@ -36,7 +36,7 @@ import { fetchLineupById, voteForLineup } from '@/services/communityService';
 import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PITCH_HEIGHT = 480;
+const PITCH_HEIGHT = 500;
 
 const PITCH_THEMES: Record<PitchThemeId, [string, string]> = {
   original: [Colors.light.pitchGreen, Colors.light.pitchGreen],
@@ -443,26 +443,26 @@ export default function LineupDetailScreen() {
           
           <View style={styles.watermark}>
             <ThemedText type="small" style={styles.watermarkText}>
-              DraftMaster FC
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.lineupInfo}>
-          <ThemedText type="h2" style={styles.lineupName}>{lineup.name}</ThemedText>
-          <View style={styles.lineupMeta}>
-            <View style={[styles.formationBadge, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="grid" size={14} color={theme.primary} />
-              <ThemedText type="small" style={{ marginLeft: Spacing.xs, fontWeight: '600' }}>
-                {lineup.formation.name}
-              </ThemedText>
-            </View>
-            <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              {playerCount}/11 players
+              www.draftmasterfc.com
             </ThemedText>
           </View>
         </View>
       </ViewShot>
+
+      <View style={styles.lineupInfo}>
+        <ThemedText type="h2" style={styles.lineupName}>{lineup.name}</ThemedText>
+        <View style={styles.lineupMeta}>
+          <View style={[styles.formationBadge, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="grid" size={14} color={theme.primary} />
+            <ThemedText type="small" style={{ marginLeft: Spacing.xs, fontWeight: '600' }}>
+              {lineup.formation.name}
+            </ThemedText>
+          </View>
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+            {playerCount}/11 players
+          </ThemedText>
+        </View>
+      </View>
 
       {isChallengeVote && (
         <View style={[styles.challengeCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
