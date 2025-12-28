@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
@@ -27,7 +28,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { deleteLineup, loadLineups } from '@/data/storage';
-import { Lineup } from '@/data/types';
+import { Lineup, PitchThemeId } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import ShareLineupModal from '@/screens/ShareLineupModal';
 import { useAuth } from '@/services/authContext';
@@ -36,6 +37,13 @@ import { isSupabaseConfigured } from '@/services/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PITCH_HEIGHT = 480;
+
+const PITCH_THEMES: Record<PitchThemeId, [string, string]> = {
+  green: ['#a7d9b9', '#8bc9a6'],
+  blue: ['#93c5fd', '#60a5fa'],
+  classic: ['#d4d4d4', '#a3a3a3'],
+  dark: ['#1f2937', '#111827'],
+};
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -288,6 +296,13 @@ export default function LineupDetailScreen() {
   }
 
   const playerCount = Object.keys(lineup.players || {}).length;
+  const pitchThemeId: PitchThemeId = (() => {
+    const fromLineup = lineup.pitchThemeId;
+    const fromFormation = (lineup.formation as any)?.pitchThemeId as PitchThemeId | undefined;
+    const candidate = fromLineup || fromFormation;
+    if (candidate && candidate in PITCH_THEMES) return candidate;
+    return 'green';
+  })();
 
   return (
     <>
@@ -309,8 +324,13 @@ export default function LineupDetailScreen() {
       >
         <View style={[
           styles.pitch,
-          { backgroundColor: isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen }
         ]}>
+          <LinearGradient
+            colors={PITCH_THEMES[pitchThemeId]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
           <View style={styles.pitchLines}>
             <View style={[styles.centerCircle, { borderColor: 'rgba(255,255,255,0.25)' }]} />
             <View style={[styles.centerLine, { backgroundColor: 'rgba(255,255,255,0.25)' }]} />

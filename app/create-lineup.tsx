@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -35,7 +36,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { formations, getDefaultFormation, getFormationById } from '@/data/formations';
 import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, loadUser, updateLineup } from '@/data/storage';
-import { Formation, FormationPosition, Lineup, Player, Position } from '@/data/types';
+import { Formation, FormationPosition, Lineup, PitchThemeId, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import { getApiFootballPlayersByTeamName } from '@/services/apiFootballService';
 import { useAuth } from '@/services/authContext';
@@ -76,6 +77,13 @@ const TEAM_OPTIONS = [
   { id: 'barcelona', label: 'Barcelona', apiName: 'Barcelona' },
   { id: 'real-madrid', label: 'Real Madrid', apiName: 'Real Madrid' },
 ] as const;
+
+const PITCH_THEMES: Record<PitchThemeId, { label: string; colors: [string, string] }> = {
+  green: { label: 'Green', colors: ['#a7d9b9', '#8bc9a6'] },
+  blue: { label: 'Blue', colors: ['#93c5fd', '#60a5fa'] },
+  classic: { label: 'Classic', colors: ['#d4d4d4', '#a3a3a3'] },
+  dark: { label: 'Dark', colors: ['#1f2937', '#111827'] },
+};
 
 function FormationSelector({ 
   selected, 
@@ -207,6 +215,66 @@ function FilterChips({
               >
                 {option === 'ALL' ? 'All' : option}
               </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function PitchThemeSelector({
+  selected,
+  onSelect,
+}: {
+  selected: PitchThemeId;
+  onSelect: (themeId: PitchThemeId) => void;
+}) {
+  const { theme } = useTheme();
+
+  return (
+    <View style={styles.pitchThemeSection}>
+      <ThemedText type="small" style={[styles.pitchThemeTitle, { color: theme.textSecondary }]}>
+        Pitch
+      </ThemedText>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.pitchThemeList}
+      >
+        {(Object.keys(PITCH_THEMES) as PitchThemeId[]).map((themeId) => {
+          const isSelected = themeId === selected;
+          const textColor = themeId === 'classic' ? '#111827' : '#FFFFFF';
+
+          return (
+            <Pressable
+              key={themeId}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.selectionAsync();
+                }
+                onSelect(themeId);
+              }}
+              style={[
+                styles.pitchThemeChip,
+                {
+                  borderColor: isSelected ? theme.primary : theme.border,
+                  borderWidth: isSelected ? 2 : 1,
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={PITCH_THEMES[themeId].colors}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={styles.pitchThemeChipContent}>
+                <ThemedText type="small" style={{ color: textColor, fontWeight: '700' }}>
+                  {PITCH_THEMES[themeId].label}
+                </ThemedText>
+                {isSelected ? <Feather name="check" size={14} color={textColor} /> : null}
+              </View>
             </Pressable>
           );
         })}
@@ -458,7 +526,7 @@ function DraggablePlayerCard({
 }
 
 export default function CreateLineupScreen() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, profile } = useAuth();
@@ -495,6 +563,11 @@ export default function CreateLineupScreen() {
   const [selectedPlayers, setSelectedPlayers] = useState<{ [key: string]: Player }>(
     editLineup?.players || {}
   );
+  const [pitchThemeId, setPitchThemeId] = useState<PitchThemeId>(() => {
+    const fromLineup = editLineup?.pitchThemeId as PitchThemeId | undefined;
+    const fromFormation = (editLineup?.formation as any)?.pitchThemeId as PitchThemeId | undefined;
+    return fromLineup || fromFormation || 'green';
+  });
   const [selectedPosition, setSelectedPosition] = useState<FormationPosition | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
@@ -849,6 +922,7 @@ export default function CreateLineupScreen() {
       name: lineupName.trim(),
       formation: selectedFormation,
       players: selectedPlayers,
+      pitchThemeId,
       createdAt: editLineup?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       votes: editLineup?.votes || 0,
@@ -1021,6 +1095,8 @@ export default function CreateLineupScreen() {
             onCreateCustom={handleCreateCustomFormation}
           />
 
+          <PitchThemeSelector selected={pitchThemeId} onSelect={setPitchThemeId} />
+
           <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
           <View 
             ref={pitchRef}
@@ -1036,9 +1112,14 @@ export default function CreateLineupScreen() {
             }}
             style={[
               styles.pitch,
-              { backgroundColor: isDark ? Colors.dark.pitchGreen : Colors.light.pitchGreen }
             ]}
           >
+            <LinearGradient
+              colors={PITCH_THEMES[pitchThemeId].colors}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
             <View style={styles.pitchLines}>
               <View style={[styles.centerCircle, { borderColor: 'rgba(255,255,255,0.25)' }]} />
               <View style={[styles.centerLine, { backgroundColor: 'rgba(255,255,255,0.25)' }]} />
@@ -1509,6 +1590,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  pitchThemeSection: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.sm,
+  },
+  pitchThemeTitle: {
+    fontWeight: '600',
+    marginBottom: Spacing.xs,
+  },
+  pitchThemeList: {
+    paddingBottom: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  pitchThemeChip: {
+    height: 32,
+    minWidth: 92,
+    borderRadius: BorderRadius.full,
+    overflow: 'hidden',
+  },
+  pitchThemeChipContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.sm,
   },
   pitch: {
     marginHorizontal: Spacing.xl,

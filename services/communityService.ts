@@ -45,11 +45,13 @@ export interface PublicLineup extends Lineup {
 }
 
 function lineupRowToPublicLineup(row: LineupRow & { profiles?: Profile }, currentUserId?: string): PublicLineup {
+  const pitchThemeId = (row.formation_data as any)?.pitchThemeId as Lineup['pitchThemeId'] | undefined;
   return {
     id: row.id,
     name: row.name,
     formation: row.formation_data as unknown as Formation,
     players: row.players_data as unknown as { [positionId: string]: Player },
+    pitchThemeId,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     votes: row.votes_count,
@@ -458,7 +460,7 @@ export async function publishLineup(lineup: Lineup, userId: string): Promise<{ s
       user_id: userId,
       name: lineup.name,
       formation_id: lineup.formation.id,
-      formation_data: lineup.formation,
+      formation_data: { ...lineup.formation, pitchThemeId: lineup.pitchThemeId },
       players_data: lineup.players,
       is_public: true,
       updated_at: new Date().toISOString(),
@@ -511,6 +513,7 @@ export async function fetchLineupById(lineupId: string): Promise<Lineup | null> 
     name: data.name,
     formation: data.formation_data as unknown as Formation,
     players: (data.players_data as unknown as { [positionId: string]: Player }) || {},
+    pitchThemeId: (data.formation_data as any)?.pitchThemeId as Lineup['pitchThemeId'] | undefined,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
     votes: data.votes_count,
