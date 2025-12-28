@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RadarChart } from '@/components/RadarChart';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
@@ -559,10 +560,8 @@ export default function PlayerComparisonScreen() {
   const showComparison = player1 && player2 && stats1 && stats2;
 
   useEffect(() => {
-    if (!showComparison && activeTab !== 'overall') {
-      setActiveTab('overall');
-    }
-  }, [activeTab, showComparison]);
+    setActiveTab('overall');
+  }, []);
 
   return (
     <ThemedView style={styles.container}>
@@ -591,7 +590,6 @@ export default function PlayerComparisonScreen() {
         >
           <View style={[styles.subTabs, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
             <Pressable
-              disabled={!showComparison}
               onPress={() => setActiveTab('overall')}
               style={[
                 styles.subTab,
@@ -608,7 +606,6 @@ export default function PlayerComparisonScreen() {
               </ThemedText>
             </Pressable>
             <Pressable
-              disabled={!showComparison}
               onPress={() => setActiveTab('chart')}
               style={[
                 styles.subTab,
@@ -627,10 +624,10 @@ export default function PlayerComparisonScreen() {
           </View>
         </View>
 
-        <View style={styles.playersRow}>
-          <PlayerCard 
-            player={player1} 
-            onRemove={() => setPlayer1(null)} 
+        {activeTab === 'overall' && <View style={styles.playersRow}>
+          <PlayerCard
+            player={player1}
+            onRemove={() => setPlayer1(null)}
             color={Colors.light.gold}
             isActive={selectingSlot === 1}
             onPress={() => setSelectingSlot(1)}
@@ -642,14 +639,26 @@ export default function PlayerComparisonScreen() {
             </View>
           </View>
 
-          <PlayerCard 
-            player={player2} 
-            onRemove={() => setPlayer2(null)} 
+          <PlayerCard
+            player={player2}
+            onRemove={() => setPlayer2(null)}
             color={Colors.light.pitchGreen}
             isActive={selectingSlot === 2}
             onPress={() => setSelectingSlot(2)}
           />
-        </View>
+        </View>}
+
+        {activeTab === 'chart' && (
+          <Animated.View entering={FadeIn} style={styles.comparisonSection}>
+            <View style={[styles.chartCard, { backgroundColor: theme.backgroundSecondary }]}>
+              <View style={[styles.chartHeader, { borderBottomColor: theme.border }]}>
+                <ThemedText type="h4">Radar Comparison</ThemedText>
+              </View>
+
+              <RadarChart />
+            </View>
+          </Animated.View>
+        )}
 
         {showComparison && activeTab === 'overall' && (
           <Animated.View entering={FadeIn} style={styles.comparisonSection}>
@@ -718,7 +727,9 @@ export default function PlayerComparisonScreen() {
           </Animated.View>
         )}
 
-        {selectingSlot && (
+  
+
+        {selectingSlot && activeTab === 'overall' && (
           <Animated.View entering={FadeIn} style={styles.selectionPanelContainer}>
             <View style={[styles.selectionPanel, { backgroundColor: theme.background }]}>
               <View style={styles.selectionHeader}>
@@ -825,7 +836,7 @@ export default function PlayerComparisonScreen() {
           </Animated.View>
         )}
 
-        {!player1 && !player2 && !selectingSlot && (
+        {activeTab === 'overall' && !player1 && !player2 && !selectingSlot && (
           <View style={styles.emptyComparisonState}>
             <View style={[styles.emptyIllustration, { backgroundColor: theme.backgroundTertiary }]}>
               <Feather name="bar-chart-2" size={48} color={theme.textSecondary} />
