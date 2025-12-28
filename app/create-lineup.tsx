@@ -35,6 +35,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { formations, getDefaultFormation, getFormationById } from '@/data/formations';
+import { players as defaultPlayers } from '@/data/players';
 import { addCustomPlayer, addLineup, generateId, loadCustomFormations, loadCustomPlayers, loadUser, updateLineup } from '@/data/storage';
 import { Formation, FormationPosition, Lineup, PitchThemeId, Player, Position } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
@@ -1006,41 +1007,87 @@ export default function CreateLineupScreen() {
     }
   };
 
-  const clearFilters = () => {
+  const resetAllFilters = () => {
+    setShowFilters(false);
+    setSelectedPosition(null);
     setPositionFilter('ALL');
     setEraFilter('ALL');
     setLeagueFilter('ALL');
     setSearchQuery('');
     setSelectedTeamId('none');
+    setShowTeamDropdown(false);
+    setTeamLoadError('');
+    Keyboard.dismiss();
   };
 
-  const hasActiveFilters = positionFilter !== 'ALL' || eraFilter !== 'ALL' || leagueFilter !== 'ALL' || searchQuery !== '' || selectedPosition !== null;
+  const hasActiveFilters =
+    positionFilter !== 'ALL' ||
+    eraFilter !== 'ALL' ||
+    leagueFilter !== 'ALL' ||
+    searchQuery !== '' ||
+    selectedPosition !== null ||
+    selectedTeamId !== 'none';
+
+  const allPlayers = useMemo(() => {
+    const combined = [...defaultPlayers, ...customPlayers, ...teamPlayers];
+    const seen = new Set<string>();
+    return combined.filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [customPlayers, teamPlayers]);
 
   const filteredPlayers = useMemo(() => {
+    const normalizeText = (text: string) =>
+      text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    const scoreNameMatch = (playerName: string, queryText: string) => {
+      const name = normalizeText(playerName);
+      const query = normalizeText(queryText);
+      if (!query) return 0;
+      if (name === query) return 100;
+      if (name.startsWith(query)) return 90;
+
+      const tokens = name.split(/\s+/).filter(Boolean);
+      if (tokens.some((t) => t.startsWith(query))) return 85;
+      if (name.includes(query)) return 75;
+
+      const queryTokens = query.split(/\s+/).filter(Boolean);
+      if (queryTokens.length > 1 && queryTokens.every((t) => name.includes(t))) return 65;
+      if (query.length >= 3 && tokens.some((t) => t.includes(query))) return 55;
+      return 0;
+    };
+
     const position = selectedPosition ? selectedPosition.position : positionFilter !== 'ALL' ? positionFilter : undefined;
     const era = eraFilter !== 'ALL' ? eraFilter : undefined;
     const league = leagueFilter !== 'ALL' ? leagueFilter : undefined;
-    const query = debouncedSearchQuery.trim().toLowerCase();
+    const query = debouncedSearchQuery.trim();
 
-    const customResults = customPlayers.filter((p) => {
-      const matchesQuery = !query || p.name.toLowerCase().includes(query);
+    const base = allPlayers.filter((p) => {
       const matchesPosition = !position ? true : p.position === position || p.positions?.includes(position as Position);
       const matchesEra = !era || p.era === era;
       const matchesLeague = !league || p.league === league || p.league === 'Other';
-      return matchesQuery && matchesPosition && matchesEra && matchesLeague;
+      return matchesPosition && matchesEra && matchesLeague;
     });
 
-    const teamResults = teamPlayers.filter((p) => {
-      const matchesQuery = !query || p.name.toLowerCase().includes(query);
-      const matchesPosition = !position ? true : p.position === position || p.positions?.includes(position as Position);
-      const matchesEra = !era || p.era === era;
-      const matchesLeague = !league || p.league === league || p.league === 'Other';
-      return matchesQuery && matchesPosition && matchesEra && matchesLeague;
+    const scored = base
+      .map((p) => ({
+        player: p,
+        score: query ? scoreNameMatch(p.name, query) : 0,
+      }))
+      .filter((x) => !query || x.score > 0);
+
+    scored.sort((a, b) => {
+      if (query) {
+        if (b.score !== a.score) return b.score - a.score;
+      }
+      if (b.player.rating !== a.player.rating) return b.player.rating - a.player.rating;
+      return a.player.name.localeCompare(b.player.name);
     });
 
-    const limit = hasActiveFilters ? 50 : 30;
-    return [...customResults, ...teamResults].slice(0, limit);
-  }, [customPlayers, debouncedSearchQuery, eraFilter, hasActiveFilters, leagueFilter, positionFilter, selectedPosition, teamPlayers]);
+    return scored.slice(0, 10).map((x) => x.player);
+  }, [allPlayers, debouncedSearchQuery, eraFilter, leagueFilter, positionFilter, selectedPosition]);
 
   const alreadySelectedIds = new Set(Object.values(selectedPlayers).map(p => p.id));
 
@@ -1222,7 +1269,7 @@ export default function CreateLineupScreen() {
                 </Pressable>
               )}
               {selectedPosition && (
-                <Pressable onPress={() => { setSelectedPosition(null); clearFilters(); }}>
+                <Pressable onPress={resetAllFilters}>
                   <ThemedText type="small" style={{ color: theme.primary, marginLeft: Spacing.sm }}>Clear</ThemedText>
                 </Pressable>
               )}
@@ -1324,8 +1371,8 @@ export default function CreateLineupScreen() {
                 label="League"
               />
               {hasActiveFilters && (
-                <Pressable onPress={clearFilters} style={styles.clearFiltersButton}>
-                  <ThemedText type="small" style={{ color: theme.primary }}>Clear All Filters</ThemedText>
+                <Pressable onPress={resetAllFilters} style={styles.clearFiltersButton}>
+                  <ThemedText type="small" style={{ color: theme.primary }}>Clear Filters</ThemedText>
                 </Pressable>
               )}
             </View>
@@ -1383,7 +1430,7 @@ export default function CreateLineupScreen() {
                 <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md, textAlign: 'center' }}>
                   No players found matching &quot;{searchQuery}&quot;
                 </ThemedText>
-                <Pressable onPress={clearFilters} style={{ marginTop: Spacing.md }}>
+                <Pressable onPress={resetAllFilters} style={{ marginTop: Spacing.md }}>
                   <ThemedText type="small" style={{ color: theme.primary }}>Clear Filters</ThemedText>
                 </Pressable>
               </View>
